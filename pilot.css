@@ -16,4 +16,5 @@ body.embedded{background:var(--surface)}
 .embedded .phone::before,.embedded .phone::after,.embedded .statusbar{display:none}
 .embedded .screen{border-radius:0}.embedded .sheet{top:0;border-radius:0}.embedded .sheet-grip{display:none}
 .embedded .states{padding-bottom:20px}.embedded .tabbar{height:auto;min-height:60px;padding-bottom:max(12px,env(safe-area-inset-bottom))}
+@media(max-width:900px){.hero{order:0!important}.prototype-stage{order:1!important}.brief{order:2!important}.foot{order:3!important}}
 @media(max-width:600px){.connection{padding:7px 12px;font-size:10px}.states{scrollbar-width:thin}}

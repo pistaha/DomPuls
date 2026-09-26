@@ -4,6 +4,7 @@
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time=v=>new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
   let config,session={authenticated:false,admin:false},data={incidents:[],pending:[],mine:[]},screen='home',pendingRequest=null,busy=false,requestEpoch=0;
+  const previewReports=[];
   function error(message) {$('error').textContent=message;$('error').hidden=!message;}
   async function api(url,method='GET',payload) {
     let response;
@@ -15,6 +16,20 @@
   }
   function toast(message) {$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),3000);}
   const building=()=>config.buildings.find(b=>b.id===$('building').value);
+  function showPreview(name,focus=false) {
+    const panel=document.querySelector(`[data-preview-screen="${name}"]`);
+    if(!panel)return;
+    document.querySelectorAll('[data-preview-screen]').forEach(el=>{el.hidden=el!==panel;});
+    document.querySelectorAll('[data-preview-tab]').forEach(el=>{
+      const selected=el.dataset.previewTab===name;
+      el.classList.toggle('selected',selected);el.setAttribute('aria-selected',String(selected));el.tabIndex=selected?0:-1;
+    });
+    if(focus){const heading=panel.querySelector('h3');if(heading){heading.tabIndex=-1;heading.focus({preventScroll:true});}}
+  }
+  function renderPreviewReports() {
+    const list=$('preview-report-list');
+    list.innerHTML=previewReports.length?previewReports.map(r=>`<article class="preview-report"><b>${esc(r.category)}</b><p>${esc(r.place)} · ${esc(r.description)}</p><p>Пример создан в этом браузере. Сервер его не получал.</p></article>`).join(''):'<div class="preview-empty">В этом примере вы ещё не отправляли обращений.</div>';
+  }
   const empty=(title,body)=>`<div class="empty-state"><strong>${esc(title)}</strong>${esc(body)}</div>`;
   const chip=status=>`<span class="chip ${status==='Устранено'?'green':'blue'}">${esc(status)}</span>`;
   function incident(i,admin=false) {
@@ -41,10 +56,10 @@
   function authView() {
     if(session.source==='max')document.body.classList.add('embedded');
     const preview=!config?.development&&!session.authenticated&&!document.body.classList.contains('embedded');
-    $('public-preview').hidden=!preview;$('login-panel').hidden=session.authenticated||preview;$('connection').hidden=preview;
+    $('public-preview').hidden=!preview;$('login-panel').hidden=session.authenticated||preview;$('connection').hidden=preview;$('refresh').hidden=preview;
     $('app-content').hidden=!session.authenticated;$('app-nav').hidden=!session.authenticated;$('admin-tab').hidden=!session.admin;
     $('dev-login').hidden=!config?.development;
-    $('mode-badge').textContent=config?.development?'Тестовый режим':'Пилот';
+    $('mode-badge').textContent=preview?'Пример':config?.development?'Разработка':'Пилот';
     $('connection').textContent=config?.development?`Локальная разработка · общая тестовая база${session.admin?' · администратор':''}`:session.authenticated?'Вход MAX проверен сервером · общая база':'Для отправки заявок нужен подтверждённый вход MAX';
   }
   async function refresh() {
@@ -77,6 +92,21 @@
   $('building').addEventListener('change',()=>{pendingRequest=null;data={incidents:[],pending:[],mine:[]};render();fillUnits();$('submission-result').hidden=true;refresh();});
   $('unit').addEventListener('change',fillFloors);$('floor').addEventListener('change',fillZones);$('zone').addEventListener('change',fillPlaces);
   document.addEventListener('click',e=>{const nav=e.target.closest('[data-screen]');if(nav)show(nav.dataset.screen);});
+  document.addEventListener('click',e=>{
+    const nav=e.target.closest('[data-preview-go]');if(nav)showPreview(nav.dataset.previewGo,true);
+    const tab=e.target.closest('[data-preview-tab]');if(tab){showPreview(tab.dataset.previewTab);tab.focus();}
+  });
+  document.querySelector('[role="tablist"]')?.addEventListener('keydown',e=>{
+    if(!e.target.matches('[data-preview-tab]'))return;
+    const tabs=[...document.querySelectorAll('[data-preview-tab]')],current=tabs.indexOf(e.target);let next=current;
+    if(e.key==='ArrowRight')next=(current+1)%tabs.length;else if(e.key==='ArrowLeft')next=(current+tabs.length-1)%tabs.length;else if(e.key==='Home')next=0;else if(e.key==='End')next=tabs.length-1;else return;
+    e.preventDefault();tabs[next].focus();showPreview(tabs[next].dataset.previewTab);
+  });
+  $('preview-report-form').addEventListener('submit',e=>{
+    e.preventDefault();const place=$('preview-place').value,description=$('preview-description').value.trim();
+    if(!place||!description){$('preview-form-error').textContent='Выберите место и добавьте короткое описание.';$('preview-form-error').hidden=false;return;}
+    previewReports.unshift({category:$('preview-category').value,place,description});$('preview-description').value='';$('preview-form-error').hidden=true;renderPreviewReports();showPreview('reports',true);
+  });
   $('start-app').addEventListener('click',()=>{$('phone').scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth',block:'center'});$('phone').focus({preventScroll:true});});
   $('refresh').addEventListener('click',()=>{error('');refresh();});
   $('description').addEventListener('input',()=>{try{if(window.WebApp?.initData)window.WebApp.enableClosingConfirmation();}catch(_){}});
@@ -102,6 +132,7 @@
   });
   try {
     config=await api('/api/config');
+    $('preview-place').innerHTML='<option value="">Выберите место</option>'+config.buildings[0].places.map(p=>`<option>${esc(p.name)}</option>`).join('');
     $('building').innerHTML=config.buildings.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');fillUnits();
     const launch=await window.DomPulseLaunch;
     session=await api('/api/session');

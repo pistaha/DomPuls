@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ДомПульс — общий сигнал дома</title>
+<title>ДомПульс — пилот общежития ИТМО</title>
 <meta name="description" content="ДомПульс помогает жителям общежития сообщать о бытовых проблемах и замечать похожие обращения соседей.">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="demo.css">
@@ -11,14 +11,14 @@
 </head>
 <body>
 <div class="stage">
-  <nav class="landing-nav" aria-label="О проекте"><a href="#top">ДомПульс<span class="brand-dot">●</span></a><div class="landing-links"><a href="#how-it-works">Как работает</a><a href="#pilot">Пилот</a></div><span class="landing-tag">Сервис для общежитий</span></nav>
+  <nav class="landing-nav" aria-label="О проекте"><a href="#top">ДомПульс<span class="brand-dot">●</span></a><span>Общежитие ИТМО · пилот</span></nav>
   <header class="hero" id="top">
     <div class="hero-copy">
-      <div class="rule"><span>У дома есть пульс</span></div>
-      <h1>Когда проблема повторяется у соседей — <em>это важно заметить.</em></h1>
-      <p>ДомПульс помогает жителям сообщать о бытовых проблемах и показывает, когда рядом появляются похожие обращения. Так отдельные сигналы складываются в общую картину дома.</p>
-      <div class="hero-actions"><button class="hero-cta" type="button" id="start-app">Посмотреть интерфейс <span aria-hidden="true">↓</span></button><span class="hero-note">Понятный сигнал для жителей и команды общежития</span></div>
-      <div class="pilot-note"><b>Первый пилот — общежитие ИТМО</b><span>Вяземский переулок, 5–7.<br>Сервис использует только известные категории мест.</span></div>
+      <div class="rule"><span>Пилот для общежития ИТМО</span></div>
+      <h1>Одна проблема.<br>Несколько соседей.<br><em>Общий сигнал.</em></h1>
+      <p>ДомПульс собирает похожие обращения, чтобы возможную общую проблему заметили вовремя.</p>
+      <div class="hero-actions"><button class="hero-cta" type="button" id="start-app">Попробовать интерфейс <span aria-hidden="true">↗</span></button><span class="hero-note">Житель выбирает место и описывает, что заметил</span></div>
+      <div class="pilot-note"><b>Вяземский переулок, 5–7</b><span>В списке — только подтверждённые категории мест.<br>Неизвестные детали планировки не добавлены.</span></div>
     </div>
   </header>
 
@@ -31,13 +31,22 @@
         <div class="connection" id="connection" role="status">Подключаемся…</div>
         <div class="storage-warning" id="error" role="alert" hidden></div>
         <div class="states">
-          <section id="public-preview" class="public-preview" hidden aria-label="Пример интерфейса ДомПульса">
-            <div class="preview-welcome"><span class="preview-kicker">ОБЩАЯ КАРТИНА ДОМА</span><h3>Что происходит?</h3><p>Жители сообщают о проблемах, а ДомПульс собирает похожие сигналы по месту и времени.</p></div>
-            <div class="preview-action"><span aria-hidden="true">＋</span><div><b>Сообщить о проблеме</b><small>Пара минут — и сигнал увидят соседи</small></div><span class="preview-arrow" aria-hidden="true">→</span></div>
-            <div class="preview-section-head"><b>Как появляется общий сигнал</b><span>ПРИМЕР</span></div>
-            <article class="preview-incident"><div class="preview-incident-top"><span class="preview-dot"></span><b>Нет холодной воды</b></div><p>душ/туалет в блоке</p><div class="preview-progress"><i></i><i></i><i></i></div><small>Если о похожей проблеме сообщат ещё два разных жителя в течение 20 минут, появится возможный общий инцидент.</small></article>
-            <p class="preview-footnote">Сервис сопоставляет сообщения, но не устанавливает причину или точное место неисправности.</p>
-            <div class="preview-tabs"><span class="selected">Дом</span><span>＋ Заявка</span><span>Мои обращения</span></div>
+          <section id="public-preview" class="public-preview" hidden aria-label="Интерактивный пример интерфейса ДомПульса">
+            <div class="preview-demo-label">Интерактивный пример <span>записи не отправляются</span></div>
+            <section class="preview-screen" data-preview-screen="home" role="tabpanel" aria-labelledby="preview-tab-home" id="preview-panel-home">
+              <div class="preview-welcome"><span class="preview-kicker">ОБЩАЯ КАРТИНА ДОМА</span><h3 id="preview-home-title">Что происходит?</h3><p>Сообщите о проблеме или посмотрите, что уже заметили соседи.</p></div>
+              <button class="preview-action" type="button" data-preview-go="create"><span aria-hidden="true">＋</span><span class="preview-action-copy"><b>Сообщить о проблеме</b><small>Выберите место и опишите, что заметили</small></span><span class="preview-arrow" aria-hidden="true">→</span></button>
+              <div class="preview-section-head"><b>Возможный общий инцидент</b><span>ПРИМЕР</span></div>
+              <article class="preview-incident preview-incident--possible"><div class="preview-incident-top"><span class="preview-dot"></span><b>Нет холодной воды</b><span class="preview-status">Проверяется</span></div><p>душ/туалет в блоке</p><div class="preview-progress" aria-hidden="true"><i></i><i></i><i></i></div><small>Три разных обращения за 20 минут. Совпадение сигналов — повод проверить, а не подтверждение одной аварии.</small></article>
+              <p class="preview-footnote">Пример не содержит реальных заявок и не указывает точное место или причину.</p>
+            </section>
+            <section class="preview-screen" data-preview-screen="create" role="tabpanel" aria-labelledby="preview-tab-create" id="preview-panel-create" hidden>
+              <div class="preview-welcome"><button class="preview-back" type="button" data-preview-go="home">← Дом</button><span class="preview-kicker">НОВОЕ ОБРАЩЕНИЕ</span><h3 id="preview-create-title">Что случилось?</h3><p>Опишите только то, что заметили.</p></div>
+              <form id="preview-report-form" class="preview-form"><label for="preview-category">Проблема</label><select id="preview-category" required><option>Нет холодной воды</option></select><label for="preview-place">Где вы заметили проблему?</label><select id="preview-place" required><option value="">Выберите место</option></select><label for="preview-description">Короткое описание</label><textarea id="preview-description" maxlength="300" rows="3" placeholder="Например: нет холодной воды" required></textarea><button class="preview-submit" type="submit">Показать пример отправки</button><p class="preview-form-note">Это только знакомство с формой: запись останется на этой странице.</p><p id="preview-form-error" class="preview-error" role="alert" hidden></p></form>
+            </section>
+            <section class="preview-screen" data-preview-screen="reports" role="tabpanel" aria-labelledby="preview-tab-reports" id="preview-panel-reports" hidden>
+              <div class="preview-welcome"><span class="preview-kicker">ВАШИ СООБЩЕНИЯ</span><h3 id="preview-reports-title">Мои обращения</h3><p>Здесь житель видит отправленные обращения и их статус.</p></div><div id="preview-report-list" class="preview-report-list" aria-live="polite"><div class="preview-empty">В этом примере вы ещё не отправляли обращений.</div></div><button class="preview-action preview-secondary" type="button" data-preview-go="create"><span aria-hidden="true">＋</span><span class="preview-action-copy"><b>Создать пример обращения</b></span><span class="preview-arrow" aria-hidden="true">→</span></button></section>
+            <div class="preview-tabs" role="tablist" aria-label="Разделы примера"><button id="preview-tab-home" class="selected" type="button" role="tab" aria-selected="true" aria-controls="preview-panel-home" data-preview-tab="home">Дом</button><button id="preview-tab-create" type="button" role="tab" aria-selected="false" aria-controls="preview-panel-create" tabindex="-1" data-preview-tab="create">＋ Заявка</button><button id="preview-tab-reports" type="button" role="tab" aria-selected="false" aria-controls="preview-panel-reports" tabindex="-1" data-preview-tab="reports">Мои обращения</button></div>
           </section>
           <section id="login-panel" class="card login-panel">
             <h3>Откройте ДомПульс в MAX</h3><p id="login-note">Запустить приложение и отправить обращение можно из чата выданного бота MAX.</p>
@@ -74,11 +83,11 @@
         <nav class="tabbar" id="app-nav" aria-label="Разделы приложения" hidden><button class="tab active" type="button" data-screen="home">Дом</button><button class="tab" type="button" data-screen="create">＋ Заявка</button><button class="tab" type="button" data-screen="reports">Мои обращения</button><button class="tab" type="button" data-screen="admin" id="admin-tab" hidden>Управление</button></nav>
       </div>
     </div></div>
-    <p class="phone-caption" id="app-caption">Так выглядит ДомПульс внутри MAX</p>
+    <p class="phone-caption" id="app-caption">Нажмите на экран и пройдите пример обращения</p>
   </main>
   <section class="brief" id="how-it-works" aria-labelledby="brief-title">
     <div class="brief-kicker">От личного сообщения к общей картине</div>
-    <h2 id="brief-title">Каждому важно быть услышанным.<br>Дому важно увидеть повтор.</h2>
+    <h2 id="brief-title">Похожие сообщения видно вместе.<br>Статус обращения не теряется.</h2>
     <p class="brief-lead">Когда бытовая проблема затрагивает нескольких соседей, разрозненные сообщения легко теряются. ДомПульс помогает собрать их в один понятный сигнал — и показывает, что происходит дальше.</p>
     <div class="bridge" aria-label="Как работает сервис">
       <div class="bridge-step"><span class="bridge-index">01</span><div><strong>Житель сообщает</strong><span>Выбирает проблему и место, добавляет короткое описание.</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
@@ -97,7 +106,7 @@
     </div>
     <div class="callout"><b>ДомПульс помогает заметить похожие обращения.</b> Совпадение сообщений — это возможный общий инцидент, а не подтверждённая авария. Точное место и причину определяет только ответственная проверка.</div>
   </section>
-  <footer class="foot">ДомПульс — сервис совместного сигнала о бытовых проблемах в общежитии. Создан для пилота в ИТМО и развития вместе с жителями.</footer>
+  <footer class="foot">ДомПульс помогает жителям сообщать о бытовых проблемах и следить за статусом обращений. Пилот — общежитие ИТМО, Вяземский переулок, 5–7.</footer>
 </div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="bridge.js"></script><script src="pilot.js"></script>
 </body></html>
