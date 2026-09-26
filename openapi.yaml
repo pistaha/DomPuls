@@ -1,0 +1,528 @@
+openapi: 3.1.0
+info:
+  title: ДомПульс API
+  version: 1.0.0
+  description: >-
+    HTTP API пилота ДомПульс. Похожие обращения объединяются по категории
+    проблемы, выбранной жильцом категории места и временному окну. Результат
+    обозначает возможный общий инцидент, а не подтверждённую аварию или диагноз.
+security:
+  - sessionCookie: []
+servers:
+  - url: https://dompuls-production.up.railway.app
+    description: Existing Railway public HTTPS domain; verify its route after deployment.
+tags:
+  - name: Application
+    description: Resident-facing application resources and administrator status action.
+  - name: MAX webhook
+    description: Server-to-server bot event receiver.
+paths:
+  /api/config:
+    get:
+      tags: [Application]
+      operationId: getAppConfig
+      summary: Get public application and place configuration
+      security: []
+      responses:
+        '200':
+          description: Public configuration; contains no credentials or user data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppConfig'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api/session:
+    get:
+      tags: [Application]
+      operationId: getSession
+      summary: Get the current browser session state
+      security: []
+      responses:
+        '200':
+          description: Session state. Unauthenticated requests return all false/null values.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    post:
+      tags: [Application]
+      operationId: createSession
+      summary: Create a session from signed MAX launch data
+      security: []
+      description: >-
+        Production accepts only initData signed by MAX and verified on the server.
+        devUser is accepted only when NODE_ENV=development; it is not a production
+        login method. A successful response also sets an HttpOnly session cookie.
+      parameters:
+        - $ref: '#/components/parameters/RequestOrigin'
+        - $ref: '#/components/parameters/DomPulseRequest'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [initData]
+                  properties:
+                    initData:
+                      type: string
+                      maxLength: 16384
+                - type: object
+                  description: Local development only; never accepted in production.
+                  required: [devUser]
+                  properties:
+                    devUser:
+                      type: string
+                      enum: [dev-1, dev-2, dev-3, dev-admin]
+      responses:
+        '200':
+          description: Session created; Set-Cookie contains the session credential.
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+              description: HttpOnly dompulse_session cookie; Secure in production.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+    delete:
+      tags: [Application]
+      operationId: deleteSession
+      summary: End the current browser session
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/RequestOrigin'
+        - $ref: '#/components/parameters/DomPulseRequest'
+      responses:
+        '200':
+          description: Session ended idempotently; Set-Cookie expires any current session cookie.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [authenticated]
+                properties:
+                  authenticated:
+                    const: false
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /api/state:
+    get:
+      tags: [Application]
+      operationId: getResidentState
+      summary: Get incidents, pending similar reports, and the caller's own reports
+      parameters:
+        - name: buildingId
+          in: query
+          required: true
+          schema:
+            type: string
+            example: itmo-vyazemsky
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Private state for the authenticated participant.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/State'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api/reports:
+    post:
+      tags: [Application]
+      operationId: createReport
+      summary: Submit a resident-reported issue
+      description: >-
+        The server validates the selected place and stores the report. Three
+        distinct users reporting the same issue category and selected place
+        within 20 minutes create a possible-common-incident record. This does
+        not establish a physical location or cause. Reusing the same requestId
+        and payload is idempotent for that participant.
+      parameters:
+        - $ref: '#/components/parameters/RequestOrigin'
+        - $ref: '#/components/parameters/DomPulseRequest'
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewReport'
+      responses:
+        '201':
+          description: New report stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportCreated'
+        '200':
+          description: An identical request was previously stored.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api/incidents/{incidentId}/status:
+    patch:
+      tags: [Application]
+      operationId: updateIncidentStatus
+      summary: Update a possible incident status (administrator only)
+      description: Requires a verified session whose MAX user ID is in MAX_ADMIN_IDS.
+      parameters:
+        - name: incidentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - $ref: '#/components/parameters/RequestOrigin'
+        - $ref: '#/components/parameters/DomPulseRequest'
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [Проверяется, Мастер вызван, Устранено]
+      responses:
+        '200':
+          description: Status updated.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /webhook/max:
+    post:
+      tags: [MAX webhook]
+      operationId: receiveMaxWebhook
+      summary: Receive subscribed MAX bot events
+      description: >-
+        Server-to-server integration endpoint. It accepts the secret header
+        configured for the MAX webhook. Supported events may produce a reply
+        through the real MAX Bot API when MAX_BOT_TOKEN and MAX_BOT_USERNAME
+        are configured. Do not call this operation as a resident API test.
+      security:
+        - maxWebhookSecret: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                update_type:
+                  type: string
+                  description: The service handles bot_started and message_created; other event types are ignored.
+              additionalProperties: true
+      responses:
+        '200':
+          description: Event accepted (unsupported event types are ignored).
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: true
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '502':
+          description: The event was accepted but the MAX Bot API call failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: dompulse_session
+      description: HttpOnly cookie issued after verified MAX authentication.
+    maxWebhookSecret:
+      type: apiKey
+      in: header
+      name: X-Max-Bot-Api-Secret
+      description: Secret shared with MAX; never put its value in this file.
+  parameters:
+    RequestOrigin:
+      name: Origin
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Must match the configured public application origin for writes.
+    DomPulseRequest:
+      name: X-DomPulse-Request
+      in: header
+      required: true
+      schema:
+        const: '1'
+      description: Required anti-CSRF marker for state-changing application requests.
+  responses:
+    BadRequest:
+      description: Invalid body, place, query, status or configuration reference.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: A verified MAX session is required, or signed MAX data is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Origin, CSRF marker, webhook secret or administrator role is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: The requested change conflicts with the current incident state.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TooLarge:
+      description: Request body is larger than 32 KiB.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    UnsupportedMediaType:
+      description: A JSON request body is required.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RateLimited:
+      description: Request limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    Session:
+      type: object
+      required: [authenticated, admin, source]
+      properties:
+        authenticated:
+          type: boolean
+        admin:
+          type: boolean
+        source:
+          type: [string, 'null']
+          enum: [max, development, null]
+    AppConfig:
+      type: object
+      required: [development, synthetic, grouping, note, buildings, maxConfigured]
+      properties:
+        development:
+          type: boolean
+        synthetic:
+          type: boolean
+        grouping:
+          type: string
+          enum: [reported-place, zone]
+        note:
+          type: [string, 'null']
+        buildings:
+          type: array
+          items:
+            $ref: '#/components/schemas/Building'
+        maxConfigured:
+          type: boolean
+    Building:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        places:
+          type: array
+          items:
+            $ref: '#/components/schemas/Place'
+        units:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: {type: string}
+              name: {type: string}
+        zones:
+          type: array
+          items:
+            type: object
+            required: [id, unitId, floor, name, places]
+            properties:
+              id: {type: string}
+              unitId: {type: string}
+              floor: {type: integer}
+              name: {type: string}
+              places:
+                type: array
+                items: {type: string}
+    Place:
+      type: object
+      required: [id, name]
+      properties:
+        id: {type: string}
+        name: {type: string}
+    State:
+      type: object
+      required: [incidents, pending, mine]
+      properties:
+        incidents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Incident'
+        pending:
+          type: array
+          items:
+            $ref: '#/components/schemas/PendingReports'
+        mine:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResidentReport'
+    Incident:
+      type: object
+      required: [id, buildingId, zoneId, zoneLabel, category, title, status, createdAt, updatedAt, count, uniqueCount]
+      properties:
+        id: {type: string, format: uuid}
+        buildingId: {type: string}
+        zoneId: {type: string, description: "In reported-place mode this is the selected category ID, not a physical zone."}
+        zoneLabel: {type: string}
+        category: {type: string, const: Нет холодной воды}
+        title: {type: string, const: Похожие обращения / возможный общий инцидент}
+        status:
+          type: string
+          enum: [Проверяется, Мастер вызван, Устранено]
+        createdAt: {type: integer, format: int64}
+        updatedAt: {type: integer, format: int64}
+        count: {type: integer}
+        uniqueCount: {type: integer}
+        history:
+          type: array
+          description: Returned only to administrators.
+          items:
+            type: object
+            required: [status, at]
+            properties:
+              status: {type: string}
+              at: {type: integer, format: int64}
+    PendingReports:
+      type: object
+      required: [zoneId, zoneLabel, category, count, uniqueCount]
+      properties:
+        zoneId: {type: string}
+        zoneLabel: {type: string}
+        category: {type: string}
+        count: {type: integer}
+        uniqueCount: {type: integer}
+    ResidentReport:
+      type: object
+      required: [id, zoneId, zoneLabel, place, category, description, createdAt, incidentId, status, expired, similarResidents]
+      properties:
+        id: {type: string, format: uuid}
+        zoneId: {type: string}
+        zoneLabel: {type: string}
+        place: {type: string}
+        category: {type: string}
+        description: {type: string}
+        createdAt: {type: integer, format: int64}
+        incidentId: {type: [string, 'null'], format: uuid}
+        status: {type: [string, 'null'], enum: [Проверяется, Мастер вызван, Устранено, null]}
+        expired: {type: boolean}
+        similarResidents: {type: integer}
+    NewReport:
+      type: object
+      additionalProperties: false
+      required: [requestId, buildingId, zoneId, place, category, description]
+      properties:
+        requestId: {type: string, format: uuid}
+        buildingId: {type: string}
+        zoneId: {type: string, description: ID of a configured place in reported-place mode.}
+        place: {type: string, description: Must match a configured place selected by the resident.}
+        category: {type: string, const: Нет холодной воды}
+        description: {type: string, minLength: 1, maxLength: 300}
+    ReportCreated:
+      type: object
+      required: [id, incidentId, repeated]
+      properties:
+        id: {type: string, format: uuid}
+        incidentId: {type: [string, 'null'], format: uuid}
+        repeated: {type: boolean}

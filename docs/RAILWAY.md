@@ -1,14 +1,14 @@
 # ДомПульс на Railway
 
-Источник: `pistaha/DomPuls`, ветка `main`, корень репозитория. Backend запускается через `npm start` на Node.js 24.x. Секреты задаются в Railway Variables; `.env` не загружается в GitHub или через браузер.
+Источник: `pistaha/DomPuls`, ветка `main`, корень репозитория. Railway собирает корневой Dockerfile; production-контейнер запускает `npm start` на Node.js 24.x. Секреты задаются в Railway Variables; `.env` не загружается в GitHub или Docker image.
 
 ## Текущая готовность
 
 Код подготовлен и проверен локально, production-конфигурация ИТМО находится в `config/buildings.itmo.json`. Неизвестная планировка больше не препятствует пилоту: режим `reported-place` работает с категориями места без выдуманных этажей, блоков и стояков.
 
-В Railway создан проект `lucid-harmony`, сервис `DomPuls`, окружение `production`, источник `pistaha/DomPuls`, ветка `main`. GitHub уже подключён, повторять Configure GitHub App не нужно. Домены и инфраструктура сами по себе не подтверждают успешный запуск: обязательные значения MAX и секреты команда вводит самостоятельно.
+В Railway создан проект `lucid-harmony`, сервис `DomPuls`, окружение `production`, источник `pistaha/DomPuls`, ветка `main`. GitHub уже подключён, повторять Configure GitHub App не нужно. При текущем осмотре интерфейс показывает существующий домен и подключённый Volume `dompuls-volume`; активная версия была собрана Railpack/Node 24.21.0, одна replica в US West. После добавления Dockerfile Railway автоматически выберет его на следующей сборке.
 
-Адрес сервиса: `https://dompuls-production.up.railway.app`, target port 8080. В интерфейсе подготовлены 16 staged changes: 9 переменных, build/start/health/timeout, подключение и создание Volume. Они ожидают Deploy после ручного ввода пяти обязательных значений. Первый запуск имеет статус Crashed; публичный `/health` в Chrome показывает Railway «Application failed to respond», успешный HTTP 200 пока не подтверждён. Бот MAX не изменялся, webhook не регистрировался, платный тариф не выбирался.
+Адрес сервиса: `https://dompuls-production.up.railway.app`, ожидаемый target port 8080. Проверка публичного адреса из терминала вернула HTTP 404 от Railway с `Application not found` и `x-railway-fallback: true` как для `/health`, так и для `/`; текущая публичная маршрутизация не подтверждена и сервис сейчас нельзя считать доступным. Нужны активная публикация домена на правильный сервис/порт и повторная проверка после deployment. Наличие домена или успешный статус в Dashboard не заменяет эту проверку.
 
 ## Данные здания
 
@@ -25,9 +25,9 @@
 | Railway Variable | Значение |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `RAILPACK_NODE_VERSION` | `24` (также закреплён через `engines.node=24.x` и `.nvmrc`) |
+| Docker runtime | `node:24-bookworm-slim`; версия Node задаёт образ в Dockerfile |
 | `HOST` | `0.0.0.0` |
-| `PORT` | `8080`; укажите этот же target port при создании домена |
+| `PORT` | Railway runtime-порт; приложение слушает `0.0.0.0:$PORT`. Сверьте его с target port домена (в текущем интерфейсе — `8080`) |
 | `DATA_DIR` | `/data` — обязательно вместе с подключённым Volume |
 | `PUBLIC_URL` | `https://ДОМЕН` без завершающего `/` |
 | `MINI_APP_URL` | `https://ДОМЕН/` |
@@ -41,27 +41,27 @@
 
 Для каждого из двух production-секретов на macOS отдельно выполните `openssl rand -hex 32 | pbcopy` и сразу вставьте результат в нужное поле Railway Variables. Каждый запуск создаёт независимое случайное значение и помещает его в буфер обмена без печати в терминал. Локальный `.env` и токен бота команда не читает. Не храните секреты в документации, исходниках или истории Git. `USER_HASH_SECRET` нельзя менять при каждом деплое: от него зависит связь пользователя с прежними заявками.
 
-Railway также умеет автоматически назначать `PORT`; backend всегда читает значение из окружения. Явный `8080` выбран здесь, чтобы target port и health check были однозначны. `NODE_EXTRA_CA_CERTS` нужен только при фактической необходимости дополнительного доверенного CA; не отключайте проверку TLS.
+Railway задаёт runtime `PORT`, а backend всегда читает его из окружения; `EXPOSE 3000` в Dockerfile — документированный fallback контейнера. `NODE_EXTRA_CA_CERTS` нужен только при фактической необходимости дополнительного доверенного CA; не отключайте проверку TLS.
 
 ## Настройка в Chrome
 
 1. Подготовьте данные из таблицы выше. В текущем Trial не выбирайте платный тариф без отдельного согласования.
 2. Railway Dashboard → **lucid-harmony → DomPuls**. GitHub уже подключён; новый проект и повторная настройка GitHub App не нужны.
-3. В **Settings → Source** проверьте `pistaha/DomPuls`, ветку **main**, корень репозитория. Первый автоматический запуск без обязательных переменных завершился ошибкой. Не переключайте сервис в development ради зелёного статуса.
-4. В настройках сборки выберите **Railpack**, Build Command: `npm test && npm run build`, Start Command: `npm start`. Node должен быть **24.x**. Не используйте `npm run dev`, `serve` или статический `dist/public` как backend.
-5. На схеме проекта уже подготовлен **dompuls-volume** для DomPuls, Mount Path **`/data`**, переменная `DATA_DIR=/data`. Откройте **Details** и проверьте Mount Path; не создавайте второй диск. Эти staged changes будут применены вместе с Deploy. Одна переменная без Volume не обеспечивает сохранение базы. Если появляется требование оплатить тариф, остановитесь до согласования.
+3. В **Settings → Source** проверьте `pistaha/DomPuls`, ветку **main**, корень репозитория. GitHub уже подключён. Не переключайте сервис в development ради зелёного статуса.
+4. После попадания Dockerfile в `main` Railway сам распознаёт корневой `Dockerfile` и перестаёт собирать приложение через Railpack. Не задавайте override Build Command или Start Command: образ устанавливает зависимости и запускает `npm start`. В build logs проверьте сообщение `Using detected Dockerfile!`; Node должен быть 24.x. Не используйте `npm run dev`, `serve` или статический `dist/public` в production.
+5. На схеме проекта виден **dompuls-volume**, привязанный к DomPuls. Откройте **Details** и убедитесь, что Mount Path — **`/data`**; создайте/измените `DATA_DIR=/data` в Variables. Не создавайте второй диск. Одна переменная без Volume не обеспечивает сохранение базы. Если появляется требование оплатить тариф, остановитесь до согласования.
 6. Settings → Networking / Public Networking: домен **dompuls-production.up.railway.app**, target port **8080** уже создан. Не создавайте второй домен. Проверьте этот адрес в `PUBLIC_URL`, `MINI_APP_URL`, `MAX_WEBHOOK_URL` в форматах выше. HTTPS обслуживает Railway; в Node не нужны файлы сертификата для входящего соединения.
 7. Variables → внесите остальные переменные. `MAX_BOT_TOKEN` вводит команда самостоятельно. Проверьте имена переменных, не раскрывая значения секретов.
 8. Settings → Deploy → Healthcheck Path: **`/health`**, timeout **60 секунд**. Оставьте **1 replica**, один регион; отключите Serverless/App Sleeping для стабильного приёма событий. Pre-deploy Command оставьте пустым. Не помещайте туда регистрацию webhook или инициализацию SQLite.
-9. Примените изменения и запустите Deploy/Redeploy. Дождитесь успешной сборки и прохождения health check. База создаётся при старте в `/data/pilot.sqlite`, файлы WAL/SHM находятся рядом на том же диске. Volume монтируется на этапе запуска, не сборки.
+9. Убедитесь в Networking, что домен прикреплён к DomPuls и target port равен runtime `PORT`. Дождитесь успешной сборки и прохождения health check. База создаётся при старте в `/data/pilot.sqlite`, файлы WAL/SHM находятся рядом на том же диске. Volume монтируется на этапе запуска, не сборки.
 
-Настройки задаются в интерфейсе Railway. Старый `railway.json` здесь не добавлен: актуальная документация Railway помечает Config as Code как устаревающий механизм для legacy-сервисов. `npm start`, версия Node и поведение приложения закреплены в репозитории.
+Настройки задаются в интерфейсе Railway. `Dockerfile` задаёт Node 24 и `npm start`; Railway автоматически предпочитает его, когда файл есть в корне. Старый `railway.json` не добавлен. `DATA_DIR=/data` должен совпадать с mount path постоянного Volume.
 
 Production-проверки кода действительно требуют все пять ещё неизвестных значений: `MAX_BOT_TOKEN` (подпись MAX и Bot API), `MAX_ADMIN_IDS` (права), `MAX_BOT_USERNAME` (кнопка открытия), `USER_HASH_SECRET` (псевдонимы) и `MAX_WEBHOOK_SECRET` (защита входящего webhook). Их вводит команда вручную; не копируйте development-секрет и не используйте один секрет для двух задач. Проверка `/health` сама не проверяет валидность токена в MAX.
 
 ## Проверка после деплоя
 
-Проверка до заполнения обязательных переменных не подтвердила доступность сервиса. После успешного Deploy повторите:
+Текущая проверка вернула Railway fallback 404, поэтому после настройки домена/Volume и успешного Docker deployment выполните:
 
 ```sh
 curl --fail --show-error --silent https://dompuls-production.up.railway.app/health
@@ -80,4 +80,4 @@ curl --output /dev/null --silent --write-out '%{http_code}\n' https://dompuls-pr
 3. Только после отдельного подтверждения зарегистрировать webhook командой `npm run bot:register` в окружении сервиса. Она здесь не запускалась и не включена в build/start/pre-deploy.
 4. Проверить подписанный вход в реальном клиенте MAX, права администратора, три обращения от разных участников и общий статус. Домен и локальные тесты сами по себе не подтверждают работоспособность внутри MAX.
 
-Официальные источники: [Node в Railpack](https://railpack.com/languages/node), [Volumes](https://docs.railway.com/volumes), [Healthchecks](https://docs.railway.com/deployments/healthchecks), [Public Networking](https://docs.railway.com/networking/public-networking), [статус Config as Code](https://docs.railway.com/config-as-code/reference), [подключение мини-приложения MAX](https://dev.max.ru/docs/webapps/introduction).
+Официальные источники: [Dockerfile builds](https://docs.railway.com/builds/dockerfiles), [Build and Start Commands](https://docs.railway.com/builds/build-and-start-commands), [Volumes](https://docs.railway.com/volumes), [Healthchecks](https://docs.railway.com/deployments/healthchecks), [Public Networking](https://docs.railway.com/networking/public-networking), [подключение мини-приложения MAX](https://dev.max.ru/docs/webapps/introduction).

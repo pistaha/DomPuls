@@ -40,7 +40,12 @@ function createApp(config, options = {}) {
     if (!config.development) res.setHeader('Strict-Transport-Security','max-age=31536000');
     try {
       const url=new URL(req.url,'http://local');
-      if (config.development && (!LOOPBACK.has(req.socket.remoteAddress) || !['localhost','127.0.0.1','[::1]'].includes(new URL('http://'+req.headers.host).hostname))) throw new HttpError(403,'Разработка доступна только локально.');
+      const devHost = ['localhost','127.0.0.1','[::1]'].includes(new URL('http://'+req.headers.host).hostname);
+      const localDevRequest = LOOPBACK.has(req.socket.remoteAddress) && devHost;
+      // Docker publishes this development listener on host loopback only (compose.yaml).
+      // Keep the ordinary local-only check for every other development launch.
+      const containerDevRequest = config.containerDevelopment && devHost;
+      if (config.development && !(localDevRequest || containerDevRequest)) throw new HttpError(403,'Разработка доступна только локально.');
       if (url.pathname==='/health' && ['GET','HEAD'].includes(req.method)) {
         try {store.health();return json(res,200,{ok:true});}
         catch (_) {return json(res,503,{ok:false});}

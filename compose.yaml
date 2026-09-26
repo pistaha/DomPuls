@@ -1,0 +1,25 @@
+services:
+  dompulse:
+    build: .
+    command: ["node", "server/dev.js"]
+    environment:
+      CONTAINER_DEV: "1"
+      HOST: 0.0.0.0
+      PORT: "3000"
+      PUBLIC_URL: http://localhost:${DOMPULSE_HTTP_PORT:-3000}
+      DATA_DIR: /data
+      BUILDINGS_FILE: config/buildings.itmo.json
+    ports:
+      - "127.0.0.1:${DOMPULSE_HTTP_PORT:-3000}:3000"
+    volumes:
+      - dompulse-data:/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  dompulse-data:

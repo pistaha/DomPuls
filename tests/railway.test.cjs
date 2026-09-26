@@ -27,6 +27,8 @@ test('Railway config uses PORT, production 0.0.0.0 and absolute DATA_DIR',()=>{
   const c=loadConfig({...env,PORT:'8123',DATA_DIR:'/data'});
   assert.equal(c.port,8123);assert.equal(c.host,'0.0.0.0');assert.equal(c.dbPath,'/data/pilot.sqlite');
   assert.equal(loadConfig({NODE_ENV:'development'}).host,'127.0.0.1');
+  const dockerDev=loadConfig({NODE_ENV:'development',CONTAINER_DEV:'1',HOST:'0.0.0.0',PUBLIC_URL:'http://localhost:3000'});
+  assert.equal(dockerDev.containerDevelopment,true);assert.equal(dockerDev.host,'0.0.0.0');
   for(const port of ['0','65536','bad'])assert.throws(()=>loadConfig({...env,PORT:port}));
 });
 test('production rejects missing, synthetic, empty, malformed and conflicting zone sources',()=>{

@@ -24,10 +24,11 @@ function validateBuildings(topology) {
 function loadConfig(env = process.env) {
   const development = env.NODE_ENV === 'development';
   if (env.NODE_ENV && !['production', 'development', 'test'].includes(env.NODE_ENV)) throw new Error('NODE_ENV должен быть production или development.');
+  const containerDevelopment = development && env.CONTAINER_DEV === '1';
   const port = Number(env.PORT || 3000);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Некорректный PORT.');
   const host = env.HOST || (development ? '127.0.0.1' : '0.0.0.0');
-  if (development && !['127.0.0.1', '::1', 'localhost'].includes(host)) throw new Error('Development разрешён только на loopback.');
+  if (development && !['127.0.0.1', '::1', 'localhost'].includes(host) && !(containerDevelopment && host === '0.0.0.0')) throw new Error('Development разрешён только на loopback; Docker development requires CONTAINER_DEV=1 and a loopback-only published port.');
   const publicUrl = new URL(env.PUBLIC_URL || `http://localhost:${port}`);
   if (!['http:', 'https:'].includes(publicUrl.protocol)) throw new Error('PUBLIC_URL должен использовать HTTP или HTTPS.');
   if (publicUrl.username || publicUrl.password || publicUrl.pathname !== '/' || publicUrl.search || publicUrl.hash) throw new Error('PUBLIC_URL должен содержать только origin.');
@@ -55,7 +56,7 @@ function loadConfig(env = process.env) {
   if (webhookUrl && webhookUrl !== `${publicUrl.origin}/webhook/max`) throw new Error('MAX_WEBHOOK_URL должен быть PUBLIC_URL/webhook/max.');
   if (!development && (!webhookSecret || !webhookUrl || !botUsername)) throw new Error('Для production задайте MAX_WEBHOOK_SECRET, MAX_WEBHOOK_URL, MAX_BOT_USERNAME.');
   const dataDir = path.resolve(ROOT, env.DATA_DIR || 'data');
-  return {development, port, host, origin: publicUrl.origin, topology, botToken, hashSecret, adminIds,
+  return {development, containerDevelopment, port, host, origin: publicUrl.origin, topology, botToken, hashSecret, adminIds,
     miniAppUrl, webhookSecret, webhookUrl, botUsername,
     dbPath: path.join(dataDir, development ? 'development.sqlite' : 'pilot.sqlite')};
 }
