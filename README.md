@@ -53,7 +53,7 @@ docker compose --env-file /dev/null down
 docker compose --env-file /dev/null up -d
 ```
 
-Не добавляйте `-v` к `down`, если хотите сохранить базу. Опубликованный порт привязан только к `127.0.0.1`; `CONTAINER_DEV=1` разрешает development-серверу принимать forwarded-запросы только в этом локальном Docker-сценарии. Production Dockerfile запускает `npm start`, слушает `0.0.0.0:$PORT` и использует `/data/pilot.sqlite`; production требует переменных раздела 3 и постоянного Volume, подключённого на `/data`.
+Не добавляйте `-v` к `down`, если хотите сохранить базу. Опубликованный порт привязан только к `127.0.0.1`; `CONTAINER_DEV=1` разрешает development-серверу принимать forwarded-запросы только в этом локальном Docker-сценарии. Production Dockerfile запускает `npm start`, слушает `0.0.0.0:$PORT` и использует `/data/pilot.sqlite`; production требует переменных раздела 3 и постоянного Volume, подключённого на `/data`. Перед запуском entrypoint чинит владельца только `/data`, поскольку Railway монтирует Volume как root, и затем запускает приложение от непривилегированного пользователя `node`.
 
 ### HTTP-контракт и данные для проверки
 

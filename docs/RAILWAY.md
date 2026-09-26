@@ -6,9 +6,9 @@
 
 Код подготовлен и проверен локально, production-конфигурация ИТМО находится в `config/buildings.itmo.json`. Неизвестная планировка больше не препятствует пилоту: режим `reported-place` работает с категориями места без выдуманных этажей, блоков и стояков.
 
-В Railway создан проект `lucid-harmony`, сервис `DomPuls`, окружение `production`, источник `pistaha/DomPuls`, ветка `main`. GitHub уже подключён, повторять Configure GitHub App не нужно. При текущем осмотре интерфейс показывает существующий домен и подключённый Volume `dompuls-volume`; активная версия была собрана Railpack/Node 24.21.0, одна replica в US West. После добавления Dockerfile Railway автоматически выберет его на следующей сборке.
+В Railway создан проект `lucid-harmony`, сервис `DomPuls`, окружение `production`, источник `pistaha/DomPuls`, ветка `main`. GitHub уже подключён, повторять Configure GitHub App не нужно. Сервис использует Node 24.21.0, Dockerfile, одну replica в US West, домен и Volume `dompuls-volume` на `/data`.
 
-Адрес сервиса: `https://dompuls-production.up.railway.app`, ожидаемый target port 8080. Проверка публичного адреса из терминала вернула HTTP 404 от Railway с `Application not found` и `x-railway-fallback: true` как для `/health`, так и для `/`; текущая публичная маршрутизация не подтверждена и сервис сейчас нельзя считать доступным. Нужны активная публикация домена на правильный сервис/порт и повторная проверка после deployment. Наличие домена или успешный статус в Dashboard не заменяет эту проверку.
+Адрес сервиса: `https://dompuls-production.up.railway.app`, target port 8080. В последнем неудачном deployment Build и Deploy прошли, но health check не смог обратиться к приложению. Deploy logs показали `unable to open database file`: Railway монтирует Volume от root, а прежний Dockerfile запускал Node как `node`, который не мог создать SQLite в `/data`. Исправление добавлено в Dockerfile/entrypoint: доступ настраивается только для `/data`, затем приложение сбрасывает привилегии к `node`. Отправьте этот commit в `main`, дождитесь deployment и повторите проверку `/health`; до успешного ответа сервис считать доступным нельзя.
 
 ## Данные здания
 
@@ -49,7 +49,7 @@ Railway задаёт runtime `PORT`, а backend всегда читает его
 2. Railway Dashboard → **lucid-harmony → DomPuls**. GitHub уже подключён; новый проект и повторная настройка GitHub App не нужны.
 3. В **Settings → Source** проверьте `pistaha/DomPuls`, ветку **main**, корень репозитория. GitHub уже подключён. Не переключайте сервис в development ради зелёного статуса.
 4. После попадания Dockerfile в `main` Railway сам распознаёт корневой `Dockerfile` и перестаёт собирать приложение через Railpack. Не задавайте override Build Command или Start Command: образ устанавливает зависимости и запускает `npm start`. В build logs проверьте сообщение `Using detected Dockerfile!`; Node должен быть 24.x. Не используйте `npm run dev`, `serve` или статический `dist/public` в production.
-5. На схеме проекта виден **dompuls-volume**, привязанный к DomPuls. Откройте **Details** и убедитесь, что Mount Path — **`/data`**; создайте/измените `DATA_DIR=/data` в Variables. Не создавайте второй диск. Одна переменная без Volume не обеспечивает сохранение базы. Если появляется требование оплатить тариф, остановитесь до согласования.
+5. На схеме проекта виден **dompuls-volume**, привязанный к DomPuls. Точка монтирования проверена: **`/data`**. Сохраните `DATA_DIR=/data`; Docker entrypoint при старте выставляет владельца `/data` пользователю приложения и запускает Node без root. Не создавайте второй диск и не меняйте владельца других каталогов. Если появляется требование оплатить тариф, остановитесь до согласования.
 6. Settings → Networking / Public Networking: домен **dompuls-production.up.railway.app**, target port **8080** уже создан. Не создавайте второй домен. Проверьте этот адрес в `PUBLIC_URL`, `MINI_APP_URL`, `MAX_WEBHOOK_URL` в форматах выше. HTTPS обслуживает Railway; в Node не нужны файлы сертификата для входящего соединения.
 7. Variables → внесите остальные переменные. `MAX_BOT_TOKEN` вводит команда самостоятельно. Проверьте имена переменных, не раскрывая значения секретов.
 8. Settings → Deploy → Healthcheck Path: **`/health`**, timeout **60 секунд**. Оставьте **1 replica**, один регион; отключите Serverless/App Sleeping для стабильного приёма событий. Pre-deploy Command оставьте пустым. Не помещайте туда регистрацию webhook или инициализацию SQLite.
@@ -57,7 +57,7 @@ Railway задаёт runtime `PORT`, а backend всегда читает его
 
 Настройки задаются в интерфейсе Railway. `Dockerfile` задаёт Node 24 и `npm start`; Railway автоматически предпочитает его, когда файл есть в корне. Старый `railway.json` не добавлен. `DATA_DIR=/data` должен совпадать с mount path постоянного Volume.
 
-Production-проверки кода действительно требуют все пять ещё неизвестных значений: `MAX_BOT_TOKEN` (подпись MAX и Bot API), `MAX_ADMIN_IDS` (права), `MAX_BOT_USERNAME` (кнопка открытия), `USER_HASH_SECRET` (псевдонимы) и `MAX_WEBHOOK_SECRET` (защита входящего webhook). Их вводит команда вручную; не копируйте development-секрет и не используйте один секрет для двух задач. Проверка `/health` сама не проверяет валидность токена в MAX.
+Код использует `MAX_BOT_TOKEN` для подписи MAX и Bot API, `MAX_ADMIN_IDS` для прав, `MAX_BOT_USERNAME` для ссылки открытия, `USER_HASH_SECRET` для псевдонимов и `MAX_WEBHOOK_SECRET` для защиты входящего webhook. Имена этих переменных уже внесены в сервис; значения не выводите в логи и не отправляйте в чат. `MAX_WEBHOOK_SECRET` должен содержать 32–256 символов `A–Z`, `a–z`, `0–9`, `_` или `-`. Проверка `/health` не вызывает API MAX и сама не подтверждает валидность токена.
 
 ## Проверка после деплоя
 
