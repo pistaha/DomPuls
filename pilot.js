@@ -40,7 +40,9 @@
   }
   function authView() {
     if(session.source==='max')document.body.classList.add('embedded');
-    $('login-panel').hidden=session.authenticated;$('app-content').hidden=!session.authenticated;$('app-nav').hidden=!session.authenticated;$('admin-tab').hidden=!session.admin;
+    const preview=!config?.development&&!session.authenticated&&!document.body.classList.contains('embedded');
+    $('public-preview').hidden=!preview;$('login-panel').hidden=session.authenticated||preview;$('connection').hidden=preview;
+    $('app-content').hidden=!session.authenticated;$('app-nav').hidden=!session.authenticated;$('admin-tab').hidden=!session.admin;
     $('dev-login').hidden=!config?.development;
     $('mode-badge').textContent=config?.development?'Тестовый режим':'Пилот';
     $('connection').textContent=config?.development?`Локальная разработка · общая тестовая база${session.admin?' · администратор':''}`:session.authenticated?'Вход MAX проверен сервером · общая база':'Для отправки заявок нужен подтверждённый вход MAX';

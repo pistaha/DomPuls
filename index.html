@@ -3,21 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ДомПульс — пилот</title>
+<title>ДомПульс — общий сигнал дома</title>
+<meta name="description" content="ДомПульс помогает жителям общежития сообщать о бытовых проблемах и замечать похожие обращения соседей.">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="demo.css">
 <link rel="stylesheet" href="pilot.css">
 </head>
 <body>
 <div class="stage">
-  <nav class="landing-nav" aria-label="О проекте"><a href="#">ДомПульс<span class="brand-dot">●</span></a><span>Пилот для хакатона MAX</span></nav>
-  <header class="hero">
+  <nav class="landing-nav" aria-label="О проекте"><a href="#top">ДомПульс<span class="brand-dot">●</span></a><div class="landing-links"><a href="#how-it-works">Как работает</a><a href="#pilot">Пилот</a></div><span class="landing-tag">Сервис для общежитий</span></nav>
+  <header class="hero" id="top">
     <div class="hero-copy">
       <div class="rule"><span>У дома есть пульс</span></div>
-      <h1>Одна проблема.<br>Несколько соседей.<br><em>Общий сигнал.</em></h1>
-      <p>ДомПульс собирает похожие обращения, чтобы возможную общую проблему заметили вовремя.</p>
-      <div class="hero-actions"><button class="hero-cta" type="button" id="start-app">Открыть приложение <span aria-hidden="true">↗</span></button><span class="hero-note">3 участника · похожее место · 20 минут</span></div>
-      <div class="pilot-note"><b>Вяземский переулок, 5–7</b><span>Пилот в общежитии ИТМО.<br>Без предположений о блоках и стояках.</span></div>
+      <h1>Когда проблема повторяется у соседей — <em>это важно заметить.</em></h1>
+      <p>ДомПульс помогает жителям сообщать о бытовых проблемах и показывает, когда рядом появляются похожие обращения. Так отдельные сигналы складываются в общую картину дома.</p>
+      <div class="hero-actions"><button class="hero-cta" type="button" id="start-app">Посмотреть интерфейс <span aria-hidden="true">↓</span></button><span class="hero-note">Понятный сигнал для жителей и команды общежития</span></div>
+      <div class="pilot-note"><b>Первый пилот — общежитие ИТМО</b><span>Вяземский переулок, 5–7.<br>Сервис использует только известные категории мест.</span></div>
     </div>
   </header>
 
@@ -27,11 +28,19 @@
       <div class="sheet">
         <div class="sheet-grip" aria-hidden="true"></div>
         <div class="sheet-head"><h2 class="brand"><span class="logo" aria-hidden="true">Д</span>ДомПульс</h2><button id="refresh" class="iconbtn" type="button" aria-label="Обновить данные">↻</button></div>
-        <div class="connection" id="connection" role="status">Подключаемся к серверу…</div>
+        <div class="connection" id="connection" role="status">Подключаемся…</div>
         <div class="storage-warning" id="error" role="alert" hidden></div>
         <div class="states">
+          <section id="public-preview" class="public-preview" hidden aria-label="Пример интерфейса ДомПульса">
+            <div class="preview-welcome"><span class="preview-kicker">ОБЩАЯ КАРТИНА ДОМА</span><h3>Что происходит?</h3><p>Жители сообщают о проблемах, а ДомПульс собирает похожие сигналы по месту и времени.</p></div>
+            <div class="preview-action"><span aria-hidden="true">＋</span><div><b>Сообщить о проблеме</b><small>Пара минут — и сигнал увидят соседи</small></div><span class="preview-arrow" aria-hidden="true">→</span></div>
+            <div class="preview-section-head"><b>Как появляется общий сигнал</b><span>ПРИМЕР</span></div>
+            <article class="preview-incident"><div class="preview-incident-top"><span class="preview-dot"></span><b>Нет холодной воды</b></div><p>душ/туалет в блоке</p><div class="preview-progress"><i></i><i></i><i></i></div><small>Если о похожей проблеме сообщат ещё два разных жителя в течение 20 минут, появится возможный общий инцидент.</small></article>
+            <p class="preview-footnote">Сервис сопоставляет сообщения, но не устанавливает причину или точное место неисправности.</p>
+            <div class="preview-tabs"><span class="selected">Дом</span><span>＋ Заявка</span><span>Мои обращения</span></div>
+          </section>
           <section id="login-panel" class="card login-panel">
-            <h3>Вход в ДомПульс</h3><p id="login-note">Откройте мини-приложение из бота MAX. Подлинность входа проверяет сервер.</p>
+            <h3>Откройте ДомПульс в MAX</h3><p id="login-note">Запустить приложение и отправить обращение можно из чата выданного бота MAX.</p>
             <div id="dev-login" hidden><p class="role-card">Локальная разработка. Эти пользователи и заявки — тестовые; MAX не подключён.</p><label class="f-label" for="dev-user">Тестовый вход</label><select id="dev-user" class="field"><option value="dev-1">Участник 1</option><option value="dev-2">Участник 2</option><option value="dev-3">Участник 3</option><option value="dev-admin">Администратор разработки</option></select><button id="dev-signin" class="btn btn-primary wide" type="button">Войти локально</button></div>
           </section>
           <div id="app-content" hidden>
@@ -65,10 +74,30 @@
         <nav class="tabbar" id="app-nav" aria-label="Разделы приложения" hidden><button class="tab active" type="button" data-screen="home">Дом</button><button class="tab" type="button" data-screen="create">＋ Заявка</button><button class="tab" type="button" data-screen="reports">Мои обращения</button><button class="tab" type="button" data-screen="admin" id="admin-tab" hidden>Управление</button></nav>
       </div>
     </div></div>
-    <p class="phone-caption" id="app-caption">Общая база на сервере · демо изолировано</p>
+    <p class="phone-caption" id="app-caption">Так выглядит ДомПульс внутри MAX</p>
   </main>
-  <aside class="brief" aria-label="Как работает ДомПульс"><div class="brief-kicker">От сообщений к общей картине</div><h2>Три разных жителя.<br>Один повод проверить.</h2><p class="brief-lead">Совпадение категории проблемы, выбранного места и времени помогает увидеть похожие обращения. Три разных участника за 20 минут — повод проверить возможный общий инцидент.</p><div class="callout"><b>Без инженерного диагноза.</b> Совпадение категории места не означает один блок, помещение или стояк. ДомПульс не определяет место и причину проблемы точнее, чем сообщил участник.</div><div class="callout"><b>Два раздельных режима.</b> Пилот использует серверную базу и проверку MAX. Сценарий для защиты доступен команде отдельно и работает только с тестовыми данными.</div></aside>
-  <footer class="foot">ДомПульс · хакатон MAX. Пилот: общежитие ИТМО, Вяземский переулок, 5–7. Подключение MAX требует токена и HTTPS-хостинга; фактический режим показан над формой. Автоматические уведомления в УК не подключены.</footer>
+  <section class="brief" id="how-it-works" aria-labelledby="brief-title">
+    <div class="brief-kicker">От личного сообщения к общей картине</div>
+    <h2 id="brief-title">Каждому важно быть услышанным.<br>Дому важно увидеть повтор.</h2>
+    <p class="brief-lead">Когда бытовая проблема затрагивает нескольких соседей, разрозненные сообщения легко теряются. ДомПульс помогает собрать их в один понятный сигнал — и показывает, что происходит дальше.</p>
+    <div class="bridge" aria-label="Как работает сервис">
+      <div class="bridge-step"><span class="bridge-index">01</span><div><strong>Житель сообщает</strong><span>Выбирает проблему и место, добавляет короткое описание.</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
+      <div class="bridge-step"><span class="bridge-index">02</span><div><strong>Похожие сигналы видны вместе</strong><span>Совпадение места, проблемы и времени помогает заметить повтор.</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
+      <div class="bridge-step"><span class="bridge-index">03</span><div><strong>Появляется понятный статус</strong><span>Жители видят, что обращение проверяется, мастер вызван или проблема устранена.</span></div></div>
+    </div>
+    <div class="brief-grid">
+      <article class="brief-card"><span class="label">Для жителя</span><strong>Сообщить просто</strong><p>Короткая форма вместо поиска нужного чата или повторного объяснения соседям.</p></article>
+      <article class="brief-card"><span class="label">Для соседей</span><strong>Понятно, что происходит</strong><p>Видны похожие обращения и общий статус — без чужих личных описаний.</p></article>
+      <article class="brief-card"><span class="label">Для команды дома</span><strong>Повтор не теряется</strong><p>Несколько сообщений превращаются в повод проверить ситуацию и обновить статус.</p></article>
+      <article class="brief-card"><span class="label">Для пилота</span><strong>Осторожно с выводами</strong><p>Сервис показывает сходство сигналов, а не ставит диагноз и не ищет аварию автоматически.</p></article>
+    </div>
+    <div class="brief-section" id="pilot">
+      <div class="brief-section-head"><h3>Пилот: общежитие ИТМО</h3><span>Вяземский переулок, 5–7</span></div>
+      <p class="brief-lead">Житель выбирает одну из понятных категорий: душ/туалет в блоке, прачечная на первом этаже, столовая, учебная комната, другое или не знаю. Номера комнат, блоков и неподтверждённые этажи не используются.</p>
+    </div>
+    <div class="callout"><b>ДомПульс помогает заметить похожие обращения.</b> Совпадение сообщений — это возможный общий инцидент, а не подтверждённая авария. Точное место и причину определяет только ответственная проверка.</div>
+  </section>
+  <footer class="foot">ДомПульс — сервис совместного сигнала о бытовых проблемах в общежитии. Создан для пилота в ИТМО и развития вместе с жителями.</footer>
 </div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="bridge.js"></script><script src="pilot.js"></script>
 </body></html>
