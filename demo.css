@@ -1,0 +1,42 @@
+/* Functional demo additions; keeps the original landing, phone and MAX-inspired palette. */
+.brand-dot{color:var(--accent);font-size:12px;margin-left:5px}
+.pilot-note{margin-top:35px;padding-top:20px;border-top:1px solid var(--landing-line);font-size:13px;line-height:1.55;color:var(--landing-muted)}
+.pilot-note b,.pilot-note span{display:block}.pilot-note b{color:var(--text);margin-bottom:5px}
+.demo-badge{font-size:10px;color:var(--text-2)}
+.prototype-stage .phone{height:830px;width:410px}
+.sheet{top:43px;left:0;right:0;bottom:0;height:auto;border-radius:22px 22px 0 0;box-shadow:none}
+.sheet-head{padding:0 16px;height:42px}.sheet-grip{height:12px}
+.demo-toolbar{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:6px 10px;padding:6px 16px 12px;color:var(--text-2);font-size:11px;border-bottom:1px solid var(--divider-2)}
+.demo-toolbar select{width:100%;height:33px}
+.states{padding:14px 16px 22px;scroll-padding-top:14px}
+.tabbar{position:static;flex:none;height:60px;padding:6px 8px 12px;gap:2px;background:#fff;border-top:1px solid var(--divider-2)}
+.tabbar .tab{min-width:0;flex:1;padding:8px 2px;font-size:11px;border-radius:10px;height:auto}
+.tabbar .tab.active{background:var(--accent-soft)}
+.greet{margin:0 0 16px}.greet h3{font-size:21px}.greet h3 small{font-size:12px;line-height:1.5}
+.wide{width:100%;margin:10px 0;min-height:44px;height:auto;padding:12px 10px;line-height:1.4}
+.section-heading{display:flex;justify-content:space-between;gap:8px;color:var(--text);font-size:13px;margin:20px 0 10px}
+.section-heading span{font-weight:500;color:var(--text-3)}
+.empty-state{padding:18px 14px;border:1px dashed #C8CFD9;border-radius:14px;font-size:12px;line-height:1.5;color:var(--text-2)}
+.empty-state strong{display:block;color:var(--text);font-size:13px;margin-bottom:4px}
+.incident,.report-card,.pending-card{margin-bottom:10px;color:var(--text);font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.incident{border:1px solid rgba(0,122,255,.18)}
+.card-heading{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;margin-bottom:10px}
+.record-id{font-size:10px;color:var(--text-3);letter-spacing:.04em}
+.incident h4,.report-card h4{font-size:15px;letter-spacing:-.02em;line-height:1.35;margin:4px 0}
+.card-meta{font-size:11px;color:var(--text-2);margin-top:7px}
+.explanation{font-size:11px;padding-top:10px;margin-top:10px;border-top:1px solid var(--divider-2);color:var(--text-2)}
+.report-description{white-space:pre-wrap;margin-top:9px;font-size:12px}
+.report-state{background:var(--bg2);padding:8px;border-radius:8px;font-size:11px;margin-top:10px}
+.pending-count{font-weight:700;color:var(--accent);font-size:14px}
+.progress-dots{display:flex;gap:5px;margin:9px 0}.progress-dots span{height:5px;border-radius:3px;background:#E0E6EF;flex:1}.progress-dots .filled{background:var(--accent)}
+.local-note,.location-note{font-size:11px;line-height:1.55;color:var(--text-2);margin:12px 0}.local-note{text-align:center}
+.form-grid{display:grid;grid-template-columns:1.7fr 1fr;gap:10px}.f-label{margin-top:12px}.f-label span{font-size:10px;color:var(--text-3);font-weight:400}
+.field{font-size:13px;padding:10px;min-height:42px}.field:focus-visible,button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.role-card p{margin:7px 0}.role-card .field{font-size:12px}#demo-progress{font-size:11px;line-height:1.6;color:var(--text-2)}
+#submission-result{background:#EAF7EE;border:1px solid #B6DCC1;color:#17632C;padding:12px;border-radius:12px;font-size:12px;line-height:1.5;margin-bottom:12px}
+.storage-warning{font-size:11px;padding:8px 16px;color:#7C3C00;background:#FFF0D9}
+.status-select{margin-top:8px;width:100%;font-size:12px}.history{margin-top:10px;font-size:11px;color:var(--text-2)}
+button{cursor:pointer}button:disabled{opacity:.55;cursor:default}
+/* On phones the interactive app comes before the longer explanation. */
+@media(max-width:900px){.prototype-stage{order:0;max-width:440px}.hero{order:1;margin-top:40px;padding:0}.brief{order:2}.foot{order:3}.landing-nav{margin-bottom:24px}.prototype-stage .phone{width:100%}}
+@media(max-width:600px){.stage{padding:0 12px 30px}.landing-nav{padding:18px 5px;margin-bottom:14px}.landing-nav span{font-size:10px}.prototype-stage .phone{border-radius:34px;height:780px;height:min(820px,calc(100svh - 100px));min-height:550px;padding:6px}.phone::before,.phone::after{display:none}.screen{border-radius:28px}.statusbar{height:32px;padding:0 18px;font-size:11px}.sheet{top:32px}.states{padding:12px}.demo-toolbar{padding:4px 12px 8px}.hero h1{font-size:39px}.hero-copy > p{font-size:16px}.phone-caption{font-size:10px}.tabbar{padding-bottom:9px}.brief .callout{margin-top:16px}}

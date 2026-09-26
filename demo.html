@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ДомПульс — локальное демо</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="demo.css">
+</head>
+<body class="defense-demo">
+<div class="stage">
+  <nav class="landing-nav" aria-label="О проекте"><a href="#">ДомПульс<span class="brand-dot">●</span></a><a href="/">← К пилоту</a></nav>
+  <header class="hero">
+    <div class="hero-copy">
+      <div class="rule"><span>У дома есть пульс</span></div>
+      <h1>Одна проблема.<br>Несколько соседей.<br><em>Общий сигнал.</em></h1>
+      <p>ДомПульс собирает похожие обращения, чтобы возможную общую проблему заметили вовремя.</p>
+      <div class="hero-actions"><button class="hero-cta" type="button" id="start-demo">Открыть демо <span aria-hidden="true">↗</span></button><span class="hero-note">3 жителя · одна зона · 20 минут</span></div>
+      <div class="pilot-note"><b>Вяземский пер., 5/7</b><span>Общежитие ИТМО — пример пилота.<br>Подойдёт любому многоквартирному дому.</span></div>
+    </div>
+  </header>
+  <div class="prototype-layout">
+    <aside class="brief" aria-label="Как работает ДомПульс">
+      <div class="brief-kicker">От отдельных сообщений к общей картине</div>
+      <h2>Соседи сообщают.<br>Администратор проверяет.</h2>
+      <p class="brief-lead">Три разных демо-жителя сообщают об отсутствии холодной воды в одном корпусе и на одном этаже за 20 минут. Похожие обращения объединяются в один инцидент.</p>
+      <section class="bridge" aria-label="Три шага">
+        <div class="bridge-step"><span class="bridge-index">01</span><div><strong>Обращение</strong><span>Место и короткое описание</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
+        <div class="bridge-step"><span class="bridge-index">02</span><div><strong>Общий сигнал</strong><span>Возможная общая проблема</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
+        <div class="bridge-step"><span class="bridge-index">03</span><div><strong>Проверка</strong><span>Администратор меняет статус</span></div></div>
+      </section>
+      <div class="callout"><b>Без инженерного диагноза.</b> Совпадение сообщений помогает заметить проблему. Причину и необходимые действия должна определить УК после проверки. Отправка в реальную УК в демо не подключена.</div>
+      <div class="callout"><b>Честное демо.</b> Корпуса, этажи, помещения и жители — условные тестовые данные. MAX показан только как оболочка чата. Всё сохраняется в этом браузере.</div>
+    </aside>
+    <main class="prototype-stage" aria-label="Интерактивное демо">
+      <div class="phone" id="phone" role="region" tabindex="-1" aria-label="Демо ДомПульс">
+        <div class="screen">
+          <div class="statusbar"><span>ДомПульс</span><span class="demo-badge">Только тестовые данные</span></div>
+          <div class="chat-head"><div class="avatar" aria-hidden="true">ДП</div><div class="t"><h2>ДомПульс</h2><p>Демонстрация чата MAX · не подключён</p></div></div>
+          <div class="chat">
+            <div class="day">Пример переписки · тестовые сообщения</div>
+            <div class="msg me">У нас нет холодной воды. У соседей тоже?</div>
+            <div class="msg bot">В ДомПульсе можно указать место и оставить обращение. Похожие сообщения помогут заметить возможную общую проблему.</div>
+            <button class="mini-link" type="button" data-screen="home"><span class="logo2" aria-hidden="true">ДП</span><span class="t"><b>Открыть ДомПульс</b><span>Локальное демо мини-приложения</span></span><span class="arr" aria-hidden="true">↗</span></button>
+            <div class="msg bot">Этот чат — макет. Сообщения в MAX и УК не отправляются.</div>
+          </div>
+          <div class="sheet">
+            <div class="sheet-grip" aria-hidden="true"></div>
+            <div class="sheet-head"><h2 class="brand"><span class="logo" aria-hidden="true">Д</span>ДомПульс</h2><button class="iconbtn" id="open-chat" type="button" aria-label="Показать демо-чат MAX">×</button></div>
+            <div class="demo-toolbar">
+              <label for="role-select">Демо-режим</label><select id="role-select" class="role-select"><option value="resident">Житель</option><option value="admin">Администратор</option></select>
+              <label for="user-select">Житель</label><select id="user-select" class="role-select"></select>
+            </div>
+            <div class="storage-warning" id="storage-warning" role="alert" hidden></div>
+            <div class="states">
+              <section class="state active" id="state-home" aria-labelledby="home-title">
+                <div class="greet"><div class="eyebrow">Ваш демо-дом</div><h3 id="home-title">Вяземский пер., 5/7<small>Общежитие ИТМО · пример пилота</small></h3></div>
+                <button class="btn btn-primary wide" type="button" data-screen="create">Сообщить о проблеме <span aria-hidden="true">＋</span></button>
+                <h4 class="section-heading">Активные инциденты <span id="active-count"></span></h4><div id="home-incidents"></div>
+                <h4 class="section-heading">Похожие обращения</h4><div id="home-pending"></div>
+                <h4 class="section-heading">Недавно устранено</h4><div id="home-resolved"></div>
+                <p class="local-note">Тестовые данные · только в этом браузере.<br>Подключения к MAX, серверу и УК нет.</p>
+              </section>
+              <section class="state" id="state-create" aria-labelledby="create-title">
+                <div class="greet"><div class="eyebrow">Новое обращение</div><h3 id="create-title">Что случилось?</h3></div>
+                <form id="report-form">
+                  <label class="f-label" for="category">Категория</label><select class="field" id="category"><option>Нет холодной воды</option></select>
+                  <p class="location-note">Вяземский пер., 5/7. Все варианты ниже — условная структура для демо, не план здания.</p>
+                  <div class="form-grid"><div><label class="f-label" for="unit">Корпус / подъезд</label><select class="field" id="unit" required></select></div><div><label class="f-label" for="floor">Этаж</label><select class="field" id="floor" required></select></div></div>
+                  <label class="f-label" for="place">Общее место</label><select class="field" id="place" required></select>
+                  <label class="f-label" for="description">Короткое описание <span>до 300 знаков</span></label><textarea class="field" id="description" rows="3" maxlength="300" required placeholder="Например: на общей кухне нет холодной воды"></textarea>
+                  <p id="form-error" class="form-error" role="alert"></p>
+                  <button class="btn btn-primary wide" type="submit">Отправить обращение</button>
+                  <p class="local-note">Обращение сохранится локально. В реальную УК оно не отправляется.</p>
+                </form>
+              </section>
+              <section class="state" id="state-reports" aria-labelledby="reports-title"><div class="greet"><div class="eyebrow">Личный список</div><h3 id="reports-title">Мои обращения</h3></div><div id="submission-result" role="status" hidden></div><div id="my-reports"></div></section>
+              <section class="state" id="state-admin" aria-labelledby="admin-title">
+                <div class="greet"><div class="eyebrow">Изолированное демо · тестовые роли</div><h3 id="admin-title">Администратор</h3></div>
+                <div class="role-card"><b>Тестовый сценарий</b><p>Выберите зону. Добавим недостающие обращения от Анны, Бориса и Веры до трёх разных жителей.</p>
+                  <label class="f-label" for="demo-zone">Зона для тестовых обращений</label><select class="field" id="demo-zone"></select>
+                  <button class="btn btn-primary wide" type="button" id="seed-demo">Запустить демо</button>
+                  <div id="demo-progress" role="status" aria-live="polite">1 → 2 → 3 жителя → один инцидент</div>
+                </div>
+                <h4 class="section-heading">Объединённые инциденты</h4><div id="admin-incidents"></div>
+                <h4 class="section-heading">Похожие обращения за 20 минут</h4><div id="admin-pending"></div>
+                <h4 class="section-heading">Все обращения</h4><div id="admin-reports"></div>
+                <button class="btn-warn" id="reset-demo" type="button">Сбросить демо</button>
+                <div id="reset-confirm" class="role-card" hidden><p>Удалить только тестовые обращения и инциденты ДомПульса из этого браузера?</p><button class="btn btn-white wide" type="button" id="confirm-reset">Да, сбросить тестовые данные</button><button class="btn-warn" type="button" id="cancel-reset">Отмена</button></div>
+              </section>
+            </div>
+            <nav class="tabbar" aria-label="Разделы приложения"><button class="tab active" type="button" data-screen="home">Дом</button><button class="tab" type="button" data-screen="create">＋ Заявка</button><button class="tab" type="button" data-screen="reports">Мои обращения</button><button class="tab" type="button" data-screen="admin" id="admin-tab" hidden>Управление</button></nav>
+          </div>
+        </div>
+      </div>
+      <p class="phone-caption">Работающее локальное демо · тестовые данные</p>
+    </main>
+  </div>
+  <footer class="foot"><b>ДомПульс · хакатон MAX.</b> Три похожих сообщения — повод проверить возможную общую проблему. Приложение не определяет причину аварии и не уведомляет реальную УК. Данные не синхронизируются между устройствами.</footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script src="model.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

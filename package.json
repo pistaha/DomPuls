@@ -1,0 +1,14 @@
+{
+  "name": "dompulse-pilot",
+  "version": "0.2.0",
+  "private": true,
+  "description": "ДомПульс: MAX pilot with an isolated presentation demo",
+  "engines": {"node": ">=24.0.0"},
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env server/dev.js",
+    "start": "node --env-file-if-exists=.env server/index.js",
+    "bot:register": "node --env-file-if-exists=.env bot/register.js",
+    "test": "node --test tests/*.test.cjs",
+    "build": "node scripts/build.js"
+  }
+}
