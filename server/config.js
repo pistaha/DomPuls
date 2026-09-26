@@ -8,8 +8,13 @@ function validateBuildings(topology) {
   const id = x => typeof x === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(x);
   const name = x => typeof x === 'string' && x.trim().length > 0 && x.length <= 160;
   const unique = rows => new Set(rows.map(x => x.id)).size === rows.length;
+  if (topology.grouping && !['reported-place','zone'].includes(topology.grouping)) fail();
   if (!unique(topology.buildings)) fail();
   for (const b of topology.buildings) {
+    if (topology.grouping==='reported-place') {
+      if (!id(b.id) || !name(b.name) || !Array.isArray(b.places) || !b.places.length || !unique(b.places) || b.places.some(p=>!id(p.id)||!name(p.name)) || new Set(b.places.map(p=>p.name)).size!==b.places.length) fail();
+      continue;
+    }
     if (!id(b.id) || !name(b.name) || !Array.isArray(b.units) || !b.units.length || !Array.isArray(b.zones) || !b.zones.length || !unique(b.units) || !unique(b.zones)) fail();
     if (b.units.some(u => !id(u.id) || !name(u.name) || !b.zones.some(z => z.unitId === u.id))) fail();
     for (const z of b.zones) if (!id(z.id) || !name(z.name) || !b.units.some(u => u.id === z.unitId) || !Number.isInteger(z.floor) || !Array.isArray(z.places) || !z.places.length || z.places.some(p => !name(p)) || new Set(z.places).size !== z.places.length) fail();

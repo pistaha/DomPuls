@@ -55,7 +55,7 @@ function createApp(config, options = {}) {
         if (!['GET','HEAD'].includes(req.method)) {
           if (req.headers['x-dompulse-request']!=='1' || req.headers.origin!==config.origin) throw new HttpError(403,'Источник запроса не разрешён.');
         }
-        if (url.pathname==='/api/config' && req.method==='GET') return json(res,200,{development:config.development,synthetic:config.topology.synthetic,note:config.topology.note,buildings:config.topology.buildings,maxConfigured:!!(config.botToken && config.miniAppUrl.startsWith('https://'))});
+        if (url.pathname==='/api/config' && req.method==='GET') return json(res,200,{development:config.development,synthetic:config.topology.synthetic,grouping:config.topology.grouping||'zone',note:config.topology.note,buildings:config.topology.buildings,maxConfigured:!!(config.botToken && config.miniAppUrl.startsWith('https://'))});
         if (url.pathname==='/api/session' && req.method==='GET') return json(res,200,sessionView(sessions.get(req)));
         if (url.pathname==='/api/session' && req.method==='POST') {
           const data=await body(req); let identity;

@@ -1,0 +1,22 @@
+{
+  "synthetic": false,
+  "grouping": "reported-place",
+  "note": "Похожие обращения группируются по выбранной категории места и времени. Совпадение категории не подтверждает один блок, помещение, стояк или причину проблемы.",
+  "sources": [
+    "https://int.itmo.ru/ru/dorms/hostel/25",
+    "https://itmo.ru/ru/viewotherstructure/410/studgorodok.htm"
+  ],
+  "buildings": [{
+    "id": "itmo-vyazemsky",
+    "name": "ИТМО · Вяземский переулок, 5–7",
+    "description": "Пилот по категориям места. Номера блоков, комнат и инженерная схема не заданы.",
+    "places": [
+      {"id": "block-bathroom", "name": "душ/туалет в блоке"},
+      {"id": "laundry", "name": "прачечная, 1-й этаж"},
+      {"id": "canteen", "name": "столовая"},
+      {"id": "study-room", "name": "учебная комната"},
+      {"id": "other", "name": "другое"},
+      {"id": "unknown", "name": "не знаю"}
+    ]
+  }]
+}

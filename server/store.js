@@ -6,20 +6,20 @@ const path = require('node:path');
 const {HttpError} = require('./auth');
 const WINDOW = 20 * 60 * 1000;
 const CATEGORY = 'Нет холодной воды';
-const TITLE = 'Возможная общая проблема с холодной водой';
+const TITLE = 'Похожие обращения / возможный общий инцидент';
 const STATUSES = ['Проверяется', 'Мастер вызван', 'Устранено'];
 class Store {
   constructor(filename, topology, namespace = 'pilot') {
     if (filename !== ':memory:') fs.mkdirSync(path.dirname(filename), {recursive: true, mode: 0o700});
     this.db = new DatabaseSync(filename);
     this.topology = topology;
+    this.reportedPlace = topology.grouping==='reported-place';
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;
       CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS incidents(
         id TEXT PRIMARY KEY, building_id TEXT NOT NULL, zone_id TEXT NOT NULL, zone_label TEXT NOT NULL,
         category TEXT NOT NULL, status TEXT NOT NULL CHECK(status IN ('Проверяется','Мастер вызван','Устранено')),
         created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL);
-      CREATE UNIQUE INDEX IF NOT EXISTS one_active ON incidents(building_id,zone_id,category) WHERE status != 'Устранено';
       CREATE TABLE IF NOT EXISTS reports(
         id TEXT PRIMARY KEY, user_key TEXT NOT NULL, request_key TEXT NOT NULL,
         building_id TEXT NOT NULL, zone_id TEXT NOT NULL, zone_label TEXT NOT NULL, place TEXT NOT NULL,
@@ -39,9 +39,18 @@ class Store {
       this.db.close(); throw new Error('Зоны изменились при непустой базе. Нужна явная миграция или отдельный DATA_DIR; существующая база сохранена.');
     }
     this.db.prepare("INSERT OR REPLACE INTO meta VALUES ('topology',?)").run(fingerprint);
+    // Place-based groups may have separate time windows while older groups await review.
+    // BEGIN IMMEDIATE serializes threshold creation; legacy zone mode keeps its unique index.
+    if (this.reportedPlace) this.db.exec('DROP INDEX IF EXISTS one_active');
+    else this.db.exec("CREATE UNIQUE INDEX IF NOT EXISTS one_active ON incidents(building_id,zone_id,category) WHERE status != 'Устранено'");
   }
   location(input) {
     const b = this.topology.buildings.find(b => b.id === input.buildingId);
+    if (this.reportedPlace) {
+      const p=b?.places.find(p=>p.id===input.zoneId && p.name===input.place);
+      if (!p) throw new HttpError(400,'Выберите категорию места из списка.');
+      return p.name;
+    }
     const z = b?.zones.find(z => z.id === input.zoneId);
     if (!z || !z.places.includes(input.place)) throw new HttpError(400, 'Выберите настроенную общую зону и место.');
     return `${b.units.find(u => u.id === z.unitId).name} · этаж ${z.floor} · ${z.name}`;
@@ -62,7 +71,11 @@ class Store {
       if (this.db.prepare('SELECT COUNT(*) n FROM reports WHERE user_key=? AND created_at>=?').get(user, now - WINDOW).n >= 20) throw new HttpError(429, 'Слишком много обращений. Подождите 20 минут.');
       const id = randomUUID();
       const key = [input.buildingId, input.zoneId, CATEGORY];
-      let incident = this.db.prepare("SELECT id FROM incidents WHERE building_id=? AND zone_id=? AND category=? AND status!='Устранено'").get(...key);
+      let incident = this.reportedPlace
+        ? this.db.prepare(`SELECT i.id FROM incidents i WHERE building_id=? AND zone_id=? AND category=? AND status!='Устранено'
+            AND (SELECT MIN(created_at) FROM reports WHERE incident_id=i.id)>=?
+            AND (SELECT MAX(created_at) FROM reports WHERE incident_id=i.id)<=? ORDER BY created_at DESC LIMIT 1`).get(...key,now-WINDOW,now)
+        : this.db.prepare("SELECT id FROM incidents WHERE building_id=? AND zone_id=? AND category=? AND status!='Устранено'").get(...key);
       this.db.prepare('INSERT INTO reports VALUES (?,?,?,?,?,?,?,?,?,?,?)').run(id,user,input.requestId,input.buildingId,input.zoneId,label,input.place,CATEGORY,description,now,incident?.id || null);
       if (!incident) {
         const count = this.db.prepare('SELECT COUNT(DISTINCT user_key) n FROM reports WHERE building_id=? AND zone_id=? AND category=? AND incident_id IS NULL AND created_at BETWEEN ? AND ?').get(...key,now-WINDOW,now).n;
