@@ -41,6 +41,10 @@ function createApp(config, options = {}) {
     try {
       const url=new URL(req.url,'http://local');
       if (config.development && (!LOOPBACK.has(req.socket.remoteAddress) || !['localhost','127.0.0.1','[::1]'].includes(new URL('http://'+req.headers.host).hostname))) throw new HttpError(403,'Разработка доступна только локально.');
+      if (url.pathname==='/health' && ['GET','HEAD'].includes(req.method)) {
+        try {store.health();return json(res,200,{ok:true});}
+        catch (_) {return json(res,503,{ok:false});}
+      }
       if (url.pathname==='/webhook/max' && req.method==='POST') {
         if (!config.webhookSecret || !constantEqual(req.headers['x-max-bot-api-secret'],config.webhookSecret)) throw new HttpError(403,'Webhook не авторизован.');
         try {await bot(await body(req));} catch (err) {if (err instanceof HttpError) throw err;throw new HttpError(502,'Не удалось обработать событие MAX.');}

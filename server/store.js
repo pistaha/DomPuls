@@ -110,6 +110,10 @@ class Store {
       }));
     return {incidents,pending,mine};
   }
+  health() {
+    // Read the actual database; never return topology, user data or filesystem paths.
+    this.db.prepare("SELECT value FROM meta WHERE key='namespace'").get();
+  }
   close() {this.db.close();}
 }
 module.exports = {Store,WINDOW,CATEGORY,TITLE,STATUSES};
