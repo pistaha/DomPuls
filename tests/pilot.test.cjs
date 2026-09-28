@@ -102,9 +102,9 @@ test('production defaults fail closed; development only explicit and loopback',(
   assert.throws(()=>loadConfig({NODE_ENV:'development',HOST:'0.0.0.0'}));
   assert.equal(loadConfig({NODE_ENV:'development'}).development,true);assert.throws(()=>validateBuildings({synthetic:true,buildings:[]}));
 });
-async function httpApp(t,development=true){
-  const config={development,origin:'http://localhost',topology,botToken:'fixture-token',hashSecret:'fixture-only-long-hash-secret-not-real',adminIds:new Set(['99']),buildingAccess:development?new Map():new Map([['42',topology.buildings.map(b=>b.id)],['99',topology.buildings.map(b=>b.id)]]),botUsername:'fixture_bot',miniAppUrl:'https://example.org/',webhookSecret:'fixture-webhook-secret-0123456789'};
-  const app=createApp(config,{store:new Store(':memory:',topology,development?'development':'pilot'),fetch:async()=>({ok:true})});
+async function httpApp(t,development=true,appTopology=topology){
+  const config={development,origin:'http://localhost',topology:appTopology,botToken:'fixture-token',hashSecret:'fixture-only-long-hash-secret-not-real',adminIds:new Set(['99']),buildingAccess:development?new Map():new Map([['42',appTopology.buildings.map(b=>b.id)],['99',appTopology.buildings.map(b=>b.id)]]),botUsername:'fixture_bot',miniAppUrl:'https://example.org/',webhookSecret:'fixture-webhook-secret-0123456789'};
+  const app=createApp(config,{store:new Store(':memory:',appTopology,development?'development':'pilot'),fetch:async()=>({ok:true})});
   await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+app.server.address().port;config.origin=base;
   t.after(()=>new Promise(resolve=>app.server.close(resolve)));
   const request=async(url,{method='GET',data,cookie='',origin=base,extra={}}={})=>{
@@ -123,7 +123,7 @@ test('HTTP: production rejects dev bypass and forged data; admin cannot be self-
   assert.equal((await request('/api/incidents/'+randomUUID()+'/status',{method:'PATCH',data:{status:'Устранено'},cookie:resident.cookie})).status,403);
   const admin=await request('/api/session',{method:'POST',data:{initData:signed(99)}});assert.equal(admin.body.admin,true);assert.equal((await request('/demo',{cookie:admin.cookie})).status,200);
 });
-test('HTTP: verified MAX launch works without third-party cookies in a web client',async t=>{
+test('HTTP: every verified MAX user can use the single-building pilot',async t=>{
   const {request}=await httpApp(t,false);
   const config=await request('/api/config');
   assert.equal(config.body.maxAppUrl,'https://max.ru/fixture_bot?startapp');
@@ -135,25 +135,34 @@ test('HTTP: verified MAX launch works without third-party cookies in a web clien
   const live=await request('/api/state?buildingId=vyazemsky',{extra:auth});assert.equal(live.status,200);assert.ok(!('mine' in live.body));
   assert.equal((await request('/api/reports',{method:'POST',data:input(),extra:auth})).status,201);
   assert.equal((await request('/api/reports?buildingId=vyazemsky&limit=20',{extra:auth})).body.items.length,1);
-  const denied=await request('/api/session',{method:'POST',data:{initData:signed(43)}});assert.equal(denied.status,200);
-  const deniedAuth={Authorization:'Bearer '+denied.body.sessionToken};
-  assert.deepEqual((await request('/api/config',{extra:deniedAuth})).body.buildings,[]);
-  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:deniedAuth})).status,403);
-  assert.equal((await request('/api/reports',{method:'POST',data:input(),extra:deniedAuth})).status,403);
-  assert.equal((await request('/api/incidents?buildingId=vyazemsky',{extra:deniedAuth})).status,403);
+  const anotherUser=await request('/api/session',{method:'POST',data:{initData:signed(43)}});assert.equal(anotherUser.status,200);
+  const anotherUserAuth={Authorization:'Bearer '+anotherUser.body.sessionToken};
+  assert.equal((await request('/api/config',{extra:anotherUserAuth})).body.buildings.length,1);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:anotherUserAuth})).status,200);
+  assert.equal((await request('/api/reports',{method:'POST',data:input(),extra:anotherUserAuth})).status,201);
+  assert.equal((await request('/api/incidents?buildingId=vyazemsky',{extra:anotherUserAuth})).status,200);
+  assert.equal((await request('/api/incidents/'+randomUUID()+'/status',{method:'PATCH',data:{status:'Устранено'},extra:anotherUserAuth})).status,403);
   assert.equal((await request('/api/session',{method:'DELETE',extra:auth})).status,200);
   assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:auth})).status,401);
   assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:{Authorization:'Bearer '+'0'.repeat(64)}})).status,401);
 });
-test('HTTP administrator privilege alone does not grant access to an unassigned house',async t=>{
-  const {request,app,config}=await httpApp(t,false);
-  for(let n=0;n<3;n++)app.store.add('seed-resident-'+n,input());
-  const id=app.store.snapshot('seed-resident-0','vyazemsky').incidents[0].id;
-  config.buildingAccess.delete('99');
+test('HTTP multi-building deployments still restrict users to assigned buildings',async t=>{
+  const multi={...topology,buildings:[topology.buildings[0],{...topology.buildings[0],id:'other-house',name:'Другое общежитие'}]};
+  const {request,app,config}=await httpApp(t,false,multi);
+  config.buildingAccess=new Map([['42',['vyazemsky']],['99',['vyazemsky']]]);
+  app.store.add('seed-resident-1',input());app.store.add('seed-resident-2',input());
+  const id=app.store.add('seed-resident-3',input()).incidentId;
+  const resident=await request('/api/session',{method:'POST',data:{initData:signed(42)}});
+  assert.deepEqual((await request('/api/config',{cookie:resident.cookie})).body.buildings.map(b=>b.id),['vyazemsky']);
+  assert.equal((await request('/api/state?buildingId=other-house',{cookie:resident.cookie})).status,403);
   const admin=await request('/api/session',{method:'POST',data:{initData:signed(99)}});
   assert.equal(admin.body.admin,true);
-  assert.equal((await request('/api/state?buildingId=vyazemsky',{cookie:admin.cookie})).status,403);
-  assert.equal((await request('/api/incidents/'+id+'/status',{method:'PATCH',data:{status:'Устранено'},cookie:admin.cookie})).status,403);
+  assert.equal((await request('/api/state?buildingId=other-house',{cookie:admin.cookie})).status,403);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{cookie:admin.cookie})).body.incidents[0].id,id);
+  const unassigned=await request('/api/session',{method:'POST',data:{initData:signed(43)}});
+  assert.deepEqual((await request('/api/config',{cookie:unassigned.cookie})).body.buildings,[]);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{cookie:unassigned.cookie})).status,403);
+  assert.equal((await request('/api/state?buildingId=other-house',{cookie:unassigned.cookie})).status,403);
 });
 test('HTTP: independent participants share an incident; privacy, status and demo access enforced',async t=>{
   const {request}=await httpApp(t);const cookies=[];

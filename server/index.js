@@ -19,6 +19,13 @@ function createApp(config, options = {}) {
   if (config.development) for (const id of ['dev-1','dev-2','dev-3','dev-admin']) config.buildingAccess.set(id,config.topology.buildings.map(b=>b.id));
   const store = options.store || new Store(config.dbPath,config.topology,config.development?'development':'pilot');
   const sessions = new Sessions(config), bot = createBot(config, options.fetch);
+  function buildingIdsFor(maxId) {
+    const assigned = config.buildingAccess.get(maxId);
+    if (assigned) return assigned;
+    // The ITMO pilot has one configured house. Any MAX-verified user can use
+    // that pilot; MAX identity is not presented as proof of residence.
+    return config.topology.buildings.length === 1 ? [config.topology.buildings[0].id] : [];
+  }
   const rates = new Map();
   function rate(req, action, identity, limit, windowMs=60000) {
     const now=Date.now(), key=action+':'+identity;
@@ -96,7 +103,7 @@ function createApp(config, options = {}) {
           const data=await body(req); let identity;
           if (data.initData) {
             const verified=verifyInitData(data.initData,config.botToken);
-            identity={userKey:userKey('max:'+verified.id,config.hashSecret),admin:config.adminIds.has(verified.id),buildingIds:config.buildingAccess.get(verified.id)||[],source:'max',expiresAt:verified.expiresAt};
+            identity={userKey:userKey('max:'+verified.id,config.hashSecret),admin:config.adminIds.has(verified.id),buildingIds:buildingIdsFor(verified.id),source:'max',expiresAt:verified.expiresAt};
           } else if (config.development && ['dev-1','dev-2','dev-3','dev-admin'].includes(data.devUser)) {
             identity={userKey:userKey(data.devUser,config.hashSecret),admin:data.devUser==='dev-admin',buildingIds:config.buildingAccess.get(data.devUser)||[],source:'development',expiresAt:Date.now()+3600000};
           } else throw new HttpError(401,'Нужны подписанные стартовые данные MAX.');

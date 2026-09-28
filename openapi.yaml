@@ -53,7 +53,7 @@ paths:
       tags: [Application]
       operationId: getAppConfig
       summary: Get public application and place configuration
-      description: Unauthenticated calls return the public pilot list. Verified sessions receive only buildings present in their MAX_BUILDING_ACCESS allowlist; raw MAX IDs are never returned.
+      description: Unauthenticated calls return the public pilot list. When one home is configured, every verified MAX session receives it. With multiple homes, verified sessions receive only buildings assigned in MAX_BUILDING_ACCESS. Raw MAX IDs are never returned.
       security:
         - {}
         - sessionCookie: []
@@ -316,7 +316,7 @@ paths:
       tags: [Application]
       operationId: updateIncidentStatus
       summary: Update a possible incident status (administrator only)
-      description: Requires an administrator session and explicit MAX_BUILDING_ACCESS for the incident's building. The status is a manual project-team entry.
+      description: Requires an administrator session. The administrator must also have access to the incident's home; with one configured home, all verified MAX users have home access, while multi-home deployments use MAX_BUILDING_ACCESS. The status is a manual project-team entry.
       parameters:
         - name: incidentId
           in: path
@@ -531,7 +531,7 @@ components:
           type: [string, 'null']
         buildings:
           type: array
-          description: For an authenticated session, filtered to explicitly approved buildings.
+          description: For an authenticated session, contains the single configured pilot home or, in a multi-home deployment, only assigned homes.
           items:
             $ref: '#/components/schemas/Building'
         maxConfigured:
