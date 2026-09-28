@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ДомПульс — посмотреть приложение</title>
+  <link rel="icon" href="brand-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="demo.css">
+  <link rel="stylesheet" href="pilot.css">
+  <link rel="stylesheet" href="site-prototype.css">
+</head>
+<body class="embedded site-showcase">
+  <div class="stage"><main class="prototype-stage" aria-label="ДомПульс">
+    <div class="phone"><div class="screen"><div class="device-status" aria-hidden="true"><span>9:41</span><span>●●● ▰</span></div><div class="sheet">
+      <div class="sheet-head">
+        <h1 class="brand"><span class="logo" aria-hidden="true"><img src="brand-mark.svg" alt=""></span>ДомПульс</h1>
+      </div>
+      <div class="states" id="showcase-scroll">
+        <div class="house-picker" aria-label="Дом: общежитие ИТМО, Вяземский переулок, 5–7"><span class="house-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M4 21V5a2 2 0 0 1 2-2h8v18M14 9h4a2 2 0 0 1 2 2v10M2 21h20" stroke="#758196"/><path d="M8 7h2M8 11h2M8 15h2M16 13h2M16 17h2" stroke="#2878F0"/></svg></span><div class="house-copy"><span class="house-label">Ваш дом</span><strong class="building-current">Общежитие ИТМО · Вяземский, 5–7</strong></div></div>
+        <section class="state active" id="state-home" aria-labelledby="home-title">
+          <div class="greet"><div class="eyebrow">Ситуация в доме</div><h2 id="home-title">Что происходит в доме</h2></div>
+          <button class="btn btn-primary wide" type="button" data-go="create">Сообщить о проблеме <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M12 7v10M7 12h10" stroke="currentColor"/></svg></button>
+          <h3 class="section-heading">Возможно, общая проблема <span id="active-count">1</span></h3>
+          <article class="card incident" id="home-incident"><div class="card-heading"><span class="card-symbol" aria-hidden="true">◉</span><span class="chip blue" id="home-status">Проверяется</span></div><h4>Нет холодной воды</h4><p class="card-place">Душ/туалет в блоке</p><p class="card-meta">3 разных участника · 3 обращения</p><p class="explanation">Несколько жителей сообщили об одной проблеме. Причину ещё нужно проверить.</p></article>
+          <h3 class="section-heading" id="pending-heading">Похожие обращения за 20 минут</h3>
+          <article class="card pending-card"><div class="card-heading"><span class="card-symbol" aria-hidden="true">◉</span><span class="chip blue">Похожие обращения</span></div><h4>Нет холодной воды</h4><p class="card-place">Прачечная, 1-й этаж</p><p class="pending-count">2 из 3 разных участников</p><div class="progress-dots" aria-hidden="true"><span class="filled"></span><span class="filled"></span><span></span></div><p class="card-meta">Два сообщения за последние 20 минут</p></article>
+          <h3 class="section-heading">Устранено</h3><div id="resolved-list"><div class="empty-state"><strong>Пока ничего нет</strong>Здесь появятся проблемы, которые отметят как устранённые.</div></div>
+          <p class="local-note">Описания обращений других жителей здесь не показываются.</p>
+        </section>
+        <section class="state" id="state-create" aria-labelledby="create-title">
+          <div class="greet"><div class="eyebrow">Новое обращение</div><h2 id="create-title">Что случилось?</h2></div>
+          <form id="report-form">
+            <p class="privacy-note">Не указывайте личные данные и номер комнаты.</p>
+            <label class="f-label" for="category">Что случилось?</label><div class="select-field"><span class="select-icon" aria-hidden="true">◉</span><select id="category" class="field"><option>Нет холодной воды</option></select><span class="select-chevron" aria-hidden="true">⌄</span></div>
+            <label class="f-label" for="place">Где вы заметили проблему?</label><div class="select-field"><span class="select-icon" aria-hidden="true">⌂</span><select id="place" class="field" required><option value="">Выберите место</option><option>Душ/туалет в блоке</option><option>Прачечная, 1-й этаж</option><option>Столовая</option><option>Учебная комната</option><option>Другое</option><option>Не знаю</option></select><span class="select-chevron" aria-hidden="true">⌄</span></div>
+            <label class="f-label" for="description">Короткое описание <span>до 300 знаков</span></label><textarea id="description" class="field" rows="4" maxlength="300" required placeholder="Например: в душе нет холодной воды"></textarea>
+            <button class="btn btn-primary wide" type="submit">Добавить обращение</button>
+            <p class="local-note">Обращение появится в разделе «Мои».</p>
+          </form>
+        </section>
+        <section class="state" id="state-reports" aria-labelledby="reports-title">
+          <div class="greet"><div class="eyebrow">Ваши сообщения</div><h2 id="reports-title">Мои обращения</h2></div>
+          <div id="submission-result" role="status" hidden>Обращение добавлено. Оно появилось в вашем списке.</div>
+          <div id="report-list"><div class="empty-state"><strong>Пока нет обращений</strong>Сообщите о проблеме, и она появится здесь.</div></div>
+          <button class="btn btn-primary wide" type="button" data-go="create">Сообщить о проблеме</button>
+        </section>
+        <section class="state" id="state-admin" aria-labelledby="admin-title">
+          <div class="greet"><div class="eyebrow">Управление</div><h2 id="admin-title">Общие сигналы</h2></div>
+          <p class="location-note">Здесь администратор отмечает статус возможной общей проблемы.</p>
+          <article class="card incident"><div class="card-heading"><span class="card-symbol" aria-hidden="true">◉</span><span class="chip blue" id="admin-status-chip">Проверяется</span></div><h4>Нет холодной воды</h4><p class="card-place">Душ/туалет в блоке</p><p class="card-meta">3 разных участника · 3 обращения</p><label class="f-label" for="incident-status">Статус</label><select class="field" id="incident-status"><option>Проверяется</option><option>Мастер вызван</option><option>Устранено</option></select><p class="card-meta">После изменения статус увидят жители.</p></article>
+        </section>
+      </div>
+      <nav class="tabbar" aria-label="Разделы приложения">
+        <button class="tab active" type="button" data-go="home" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z" stroke="currentColor"/></svg></span><span>Дом</span></button>
+        <button class="tab" type="button" data-go="create"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M12 7v10M7 12h10" stroke="currentColor"/></svg></span><span>Заявка</span></button>
+        <button class="tab" type="button" data-go="reports"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M6 3h9l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor"/><path d="M14 3v5h5M8 12h8M8 16h6" stroke="currentColor"/></svg></span><span>Мои</span></button>
+        <button class="tab" type="button" data-go="admin"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><circle cx="12" cy="12" r="3.5" stroke="currentColor"/><path d="M12 2v3M12 19v3M4.9 4.9 7 7M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1" stroke="currentColor"/></svg></span><span>Управление</span></button>
+      </nav>
+    </div></div></div>
+  </main></div>
+  <script src="site-prototype.js"></script>
+</body>
+</html>

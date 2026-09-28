@@ -1,10 +1,13 @@
 (async function () {
   'use strict';
+  const launchContext=await window.DomPulseLaunch;
+  if(launchContext?.error)document.body.classList.add('embedded');
+  if(!document.body.classList.contains('embedded')&&!launchContext?.initData&&!launchContext?.error)return;
   const $=id=>document.getElementById(id);
   const esc=v=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const time=v=>new Date(v).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
-  let config,session={authenticated:false,admin:false,hasBuildingAccess:false},sessionToken='',data={incidents:[],pending:[]},screen='home',pendingRequest=null,busy=false,requestEpoch=0;
-  const pages={reports:{items:[],nextCursor:null,hasMore:false},resolved:{items:[],nextCursor:null,hasMore:false},admin:{items:[],nextCursor:null,hasMore:false}};
+  let config,session={authenticated:false,admin:false,hasBuildingAccess:false},sessionToken='',data={incidents:[],pending:[]},screen='home',pendingRequest=null,busy=false,requestEpoch=0,stateLoaded=false,stateFailed=false;
+  const pages={reports:{items:[],nextCursor:null,hasMore:false,loaded:false,failed:false},resolved:{items:[],nextCursor:null,hasMore:false,loaded:false,failed:false},admin:{items:[],nextCursor:null,hasMore:false,loaded:false,failed:false}};
   const pageRequests={reports:0,resolved:0,admin:0};
   const previewReports=[];
   let showLocalLogin=false;
@@ -19,6 +22,7 @@
   }
   function toast(message) {$('toast').textContent=message;$('toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').classList.remove('show'),3000);}
   const building=()=>config.buildings.find(b=>b.id===$('building').value);
+  const syncBuildingLabel=()=>{$('building-current').textContent=$('building').selectedOptions[0]?.textContent||'';};
   function showPreview(name,focus=false) {
     const panel=document.querySelector(`[data-preview-screen="${name}"]`);
     if(!panel)return;
@@ -34,20 +38,27 @@
     list.innerHTML=previewReports.length?previewReports.map(r=>`<article class="preview-report"><b>${esc(r.category)}</b><p>${esc(r.place)} · ${esc(r.description)}</p><p>Пример создан в этом браузере. Сервер его не получал.</p></article>`).join(''):'<div class="preview-empty">В этом примере вы ещё не отправляли обращений.</div>';
   }
   const empty=(title,body)=>`<div class="empty-state"><strong>${esc(title)}</strong>${esc(body)}</div>`;
+  const loading=()=>'<div class="empty-state is-loading" role="status">Загружаем данные…</div>';
+  const failed=()=>empty('Не удалось загрузить данные','Нажмите кнопку обновления вверху.');
+  const stateBody=(items,emptyText)=>!stateLoaded?loading():stateFailed?failed():items||emptyText;
+  const pageBody=(page,items,emptyText)=>!page.loaded?loading():page.failed?failed():items||emptyText;
+  const countWord=n=>n%10===1&&n%100!==11?'обращение':n%10>=2&&n%10<=4&&(n%100<12||n%100>14)?'обращения':'обращений';
+  const problemIcon='<span class="card-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M12 3C9.2 7.2 6 10.6 6 14.2a6 6 0 0 0 12 0C18 10.6 14.8 7.2 12 3Z" stroke="#2878F0"/><path d="m5 20 14-16" stroke="#E55761"/></svg></span>';
   const chip=status=>`<span class="chip ${status==='Устранено'?'green':'blue'}">${esc(status)}</span>`;
   const moreButton=(kind,page)=>page.hasMore?`<button class="more-button" type="button" data-more-page="${kind}">Показать ещё</button>`:'';
-  const reportCard=r=>`<article class="card report-card"><div class="card-heading"><span class="record-id">${esc(r.id.slice(0,8))}</span>${chip(r.status||'Получено сервером')}</div><h4>${esc(r.category)}</h4><p>${esc(r.zoneLabel)}${r.zoneLabel===r.place?'':' · '+esc(r.place)}</p><p class="report-description">${esc(r.description)}</p><p class="card-meta">${time(r.createdAt)}</p><p class="report-state">${r.incidentId?`Возможный общий инцидент ${esc(r.incidentId.slice(0,8))}`:r.expired?'20 минут истекли. Обращение осталось в истории.':`Похожие обращения: ${r.similarResidents} из 3 разных участников.`}</p></article>`;
+  const reportCard=r=>`<article class="card report-card"><div class="card-heading">${problemIcon}${r.incidentId?'<span class="chip amber">Возможный общий инцидент</span>':chip(r.status||'Отправлено')}</div><h4>${esc(r.category)}</h4><p class="card-place">${esc(r.zoneLabel)}${r.zoneLabel===r.place?'':' · '+esc(r.place)}</p><p class="card-meta">${time(r.createdAt)}</p>${r.incidentId?`<p class="report-state">Статус: ${esc(r.status||'Проверяется')}. Совпали категория, место и время.</p>`:r.expired?'<p class="report-state">За 20 минут общий инцидент не появился.</p>':`<p class="report-state">Похожих обращений: ${r.similarResidents} из 3 разных участников.</p>`}<p class="report-description">${esc(r.description)}</p></article>`;
   function incident(i,admin=false) {
-    return `<article class="card incident"><div class="card-heading"><span class="record-id">${esc(i.id.slice(0,8))}${config.development?' · ТЕСТ':''}</span>${chip(i.status)}</div><h4>${esc(i.title)}</h4><p>${esc(i.zoneLabel)}</p><p class="card-meta">Обращений: ${i.count} · разных участников: ${i.uniqueCount}</p><p class="card-meta">Создан ${time(i.createdAt)}</p><p class="explanation">${i.status==='Устранено'?'Администратор проекта отметил устранение.':'Совпали категория проблемы, выбранная категория места и время. Это не подтверждает общую причину или одну аварию.'}</p>${admin?`<label class="f-label" for="status-${i.id}">Статус инцидента</label><select class="field" id="status-${i.id}" data-status="${i.id}" ${i.status==='Устранено'?'disabled':''}>${['Проверяется','Мастер вызван','Устранено'].map(s=>`<option ${s===i.status?'selected':''}>${s}</option>`).join('')}</select><p class="card-meta">Статус — ручная отметка администратора проекта; интеграции с управляющей компанией нет.</p><p class="history">${i.history.map(h=>`${time(h.at)} — ${esc(h.status)}`).join('<br>')}</p>`:`<p class="card-meta">Обновлено ${time(i.updatedAt)}</p>`}</article>`;
+    return `<article class="card incident"><div class="card-heading">${problemIcon}${chip(i.status)}</div><h4>${esc(i.title)}</h4><p class="card-place">${esc(i.zoneLabel)}</p><p class="card-meta">${i.uniqueCount} разных участников · ${i.count} ${countWord(i.count)}</p><p class="card-meta">С ${time(i.createdAt)}</p><p class="explanation">${i.status==='Устранено'?'Администратор отметил статус «Устранено».':'Совпали категория проблемы, выбранное место и время. Точное место и причина неизвестны.'}</p>${admin?`<label class="f-label" for="status-${i.id}">Статус</label><select class="field" id="status-${i.id}" data-status="${i.id}" ${i.status==='Устранено'?'disabled':''}>${['Проверяется','Мастер вызван','Устранено'].map(s=>`<option ${s===i.status?'selected':''}>${s}</option>`).join('')}</select><p class="card-meta">Статус отмечает администратор проекта.</p><p class="history">${i.history.map(h=>`${time(h.at)} — ${esc(h.status)}`).join('<br>')}</p>`:`<p class="card-meta">Статус отмечен администратором проекта · ${time(i.updatedAt)}</p>`}</article>`;
   }
   function render() {
     const active=data.incidents.filter(i=>i.status!=='Устранено');
     $('active-count').textContent=active.length;
-    $('home-incidents').innerHTML=active.map(i=>incident(i)).join('')||empty('Возможных общих инцидентов пока нет','Если у вас нет холодной воды, сообщите о проблеме.');
-    $('home-resolved').innerHTML=(pages.resolved.items.map(i=>incident(i)).join('')||empty('Здесь будет история','Устранённые инциденты останутся доступны.'))+moreButton('resolved',pages.resolved);
-    $('home-pending').innerHTML=data.pending.map(p=>`<article class="card pending-card"><b>${esc(p.zoneLabel)}</b><p>${esc(p.category)}</p><p class="pending-count">${p.uniqueCount} из 3 разных участников</p><div class="progress-dots" aria-hidden="true">${[1,2,3].map(n=>`<span class="${p.uniqueCount>=n?'filled':''}"></span>`).join('')}</div><p class="card-meta">Обращений за 20 минут: ${p.count}. Повторы одного участника не увеличивают порог.</p></article>`).join('')||empty('Новых похожих обращений пока нет','Здесь появятся сигналы, ещё не объединённые в инцидент.');
-    $('my-reports').innerHTML=(pages.reports.items.map(reportCard).join('')||empty('У вас пока нет обращений','Нажмите «Сообщить о проблеме».'))+moreButton('reports',pages.reports);
-    $('admin-incidents').innerHTML=session.admin?(pages.admin.items.map(i=>incident(i,true)).join('')||empty('Инцидентов пока нет','Три разных участника с похожими обращениями за 20 минут создадут повод для проверки.'))+moreButton('admin',pages.admin):'';
+    $('home-title').textContent=stateLoaded&&active.length?'Есть похожие обращения':'Что происходит в доме';
+    $('home-incidents').innerHTML=stateBody(active.map(i=>incident(i)).join(''),empty('Возможных общих инцидентов нет','Если заметили проблему, отправьте обращение.'));
+    $('home-resolved').innerHTML=pageBody(pages.resolved,pages.resolved.items.map(i=>incident(i)).join(''),empty('Пока ничего нет','Здесь появятся инциденты со статусом «Устранено».'))+moreButton('resolved',pages.resolved);
+    $('home-pending').innerHTML=stateBody(data.pending.map(p=>`<article class="card pending-card"><div class="card-heading">${problemIcon}<span class="chip blue">Похожие обращения</span></div><h4>${esc(p.category)}</h4><p class="card-place">${esc(p.zoneLabel)}</p><p class="pending-count">${p.uniqueCount} из 3 разных участников</p><div class="progress-dots" aria-hidden="true">${[1,2,3].map(n=>`<span class="${p.uniqueCount>=n?'filled':''}"></span>`).join('')}</div><p class="card-meta">${p.count} ${countWord(p.count)} за последние 20 минут</p></article>`).join(''),empty('Пока нет похожих обращений','Сообщения за последние 20 минут появятся здесь.'));
+    $('my-reports').innerHTML=pageBody(pages.reports,pages.reports.items.map(reportCard).join(''),empty('У вас пока нет обращений','Если заметили проблему, отправьте обращение.'))+moreButton('reports',pages.reports);
+    $('admin-incidents').innerHTML=session.admin?pageBody(pages.admin,pages.admin.items.map(i=>incident(i,true)).join(''),empty('Общих сигналов пока нет','Здесь появятся возможные общие инциденты.'))+moreButton('admin',pages.admin):'';
   }
   function show(name) {
     if (!session.authenticated) return;
@@ -61,7 +72,7 @@
   function authView() {
     if(session.source==='max')document.body.classList.add('embedded');
     const preview=!session.authenticated&&!document.body.classList.contains('embedded')&&!(config?.development&&showLocalLogin);
-    $('public-preview').hidden=!preview;$('login-panel').hidden=session.authenticated||preview;$('connection').hidden=preview;$('refresh').hidden=preview;
+    $('app-loading').hidden=true;$('public-preview').hidden=!preview;$('login-panel').hidden=session.authenticated||preview;$('refresh').hidden=preview||!session.authenticated;
     $('preview-to-login').hidden=!preview||!config?.development;$('login-to-preview').hidden=preview||!config?.development;
     $('access-blocked').hidden=!(session.authenticated&&!session.hasBuildingAccess);
     $('app-content').hidden=!session.authenticated||!session.hasBuildingAccess;$('app-nav').hidden=!session.authenticated||!session.hasBuildingAccess;$('admin-tab').hidden=!session.admin;
@@ -72,7 +83,6 @@
     }
     $('mode-badge').textContent=preview?'Пример':config?.development?'Разработка':'Пилот';
     $('login-note').textContent=config?.development?'Войдите тестовым участником, чтобы проверить рабочую форму и статусы.':'Запустить приложение и отправить обращение можно из чата выданного бота MAX.';
-    $('connection').textContent=config?.development?`Локальная разработка · общая тестовая база${session.admin?' · администратор':''}`:session.authenticated?'Вход MAX проверен сервером · общая база':'Для отправки заявок нужен подтверждённый вход MAX';
   }
   async function refresh() {
     if (!session.authenticated||!session.hasBuildingAccess||busy) return;
@@ -80,9 +90,8 @@
     try {
       const next=await api('/api/state?buildingId='+encodeURIComponent(id));
       if(current!==requestEpoch||id!==$('building').value||!session.authenticated)return;
-      data=next;render();
-      $('connection').textContent=(config.development?'Тестовая общая база':'Общая база · вход MAX проверен')+' · обновлено '+new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-    } catch(e) {if(current!==requestEpoch)return;error(e.message);if(e.status===401){sessionToken='';session={authenticated:false,admin:false};authView();}}
+      data=next;stateLoaded=true;stateFailed=false;error('');render();
+    } catch(e) {if(current!==requestEpoch)return;stateLoaded=true;stateFailed=true;render();error(e.message);if(e.status===401){sessionToken='';session={authenticated:false,admin:false};authView();}}
   }
   function fillUnits() {
     const b=building(), byPlace=config.grouping==='reported-place';
@@ -97,7 +106,7 @@
   function fillFloors() {const floors=[...new Set(building().zones.filter(z=>z.unitId===$('unit').value).map(z=>z.floor))].sort((a,b)=>a-b);$('floor').innerHTML=floors.map(f=>`<option value="${f}">${f}</option>`).join('');fillZones();}
   function fillZones() {$('zone').innerHTML=building().zones.filter(z=>z.unitId===$('unit').value&&z.floor===Number($('floor').value)).map(z=>`<option value="${z.id}">${esc(z.name)}</option>`).join('');fillPlaces();}
   function fillPlaces() {$('place').innerHTML=building().zones.find(z=>z.id===$('zone').value).places.map(p=>`<option>${esc(p)}</option>`).join('');}
-  function resetPages() {for(const kind of Object.keys(pages)){pageRequests[kind]++;pages[kind]={items:[],nextCursor:null,hasMore:false};}}
+  function resetPages() {for(const kind of Object.keys(pages)){pageRequests[kind]++;pages[kind]={items:[],nextCursor:null,hasMore:false,loaded:false,failed:false};}}
   async function loadPage(kind,more=false) {
     if(!session.authenticated||!session.hasBuildingAccess)return;
     const page=pages[kind],cursor=more?page.nextCursor:null;if(more&&!cursor)return;
@@ -107,16 +116,17 @@
     try {
       const result=await api(endpoint+params);
       if(request!==pageRequests[kind]||buildingId!==$('building').value)return;
-      pages[kind]={items:more?[...page.items,...result.items]:result.items,nextCursor:result.nextCursor,hasMore:result.hasMore};render();
-    } catch(e){if(request===pageRequests[kind]){error(e.message);render();}}
+      pages[kind]={items:more?[...page.items,...result.items]:result.items,nextCursor:result.nextCursor,hasMore:result.hasMore,loaded:true,failed:false};render();
+    } catch(e){if(request===pageRequests[kind]){error(e.message);pages[kind].loaded=true;pages[kind].failed=!more;render();}}
   }
   async function loadInitialPages() {await Promise.all([loadPage('reports'),loadPage('resolved'),session.admin?loadPage('admin'):Promise.resolve()]);}
   async function loadScopedConfig() {
     const scoped=await api('/api/config');config={...config,...scoped};session.hasBuildingAccess=scoped.buildings.length>0;
     $('building').innerHTML=scoped.buildings.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+    syncBuildingLabel();
     if(session.hasBuildingAccess)fillUnits();
   }
-  function clearPrivateView() {requestEpoch++;resetPages();data={incidents:[],pending:[]};render();$('description').value='';pendingRequest=null;$('submission-result').hidden=true;}
+  function clearPrivateView() {requestEpoch++;resetPages();data={incidents:[],pending:[]};stateLoaded=false;stateFailed=false;render();$('description').value='';pendingRequest=null;$('submission-result').hidden=true;}
   async function login(payload) {
     const result=await api('/api/session','POST',payload);
     sessionToken=result.sessionToken || '';
@@ -135,7 +145,7 @@
   });
   async function signOut(){if(busy)return;try {await api('/api/session','DELETE');sessionToken='';session={authenticated:false,admin:false,hasBuildingAccess:false};clearPrivateView();authView();}catch(e){error(e.message);}}
   $('signout').addEventListener('click',signOut);$('blocked-signout').addEventListener('click',signOut);
-  $('building').addEventListener('change',()=>{pendingRequest=null;resetPages();data={incidents:[],pending:[]};render();fillUnits();$('submission-result').hidden=true;refresh();loadInitialPages();});
+  $('building').addEventListener('change',()=>{syncBuildingLabel();pendingRequest=null;resetPages();data={incidents:[],pending:[]};stateLoaded=false;stateFailed=false;render();fillUnits();$('submission-result').hidden=true;refresh();loadInitialPages();});
   $('unit').addEventListener('change',fillFloors);$('floor').addEventListener('change',fillZones);$('zone').addEventListener('change',fillPlaces);
   document.addEventListener('click',e=>{const button=e.target.closest('[data-more-page]');if(button){button.disabled=true;loadPage(button.dataset.morePage,true);}});
   document.addEventListener('click',e=>{const nav=e.target.closest('[data-screen]');if(nav)show(nav.dataset.screen);});
@@ -167,28 +177,28 @@
     try {
       const result=await api('/api/reports','POST',{...input,requestId:pendingRequest.id});
       pendingRequest=null;error('');$('description').value='';$('form-error').classList.remove('show');
-      $('submission-result').textContent=`Обращение ${result.id.slice(0,8)} сохранено на сервере. ${result.incidentId?'Оно связано с возможным общим инцидентом.':'Ищем похожие обращения.'}`;$('submission-result').hidden=false;
+      $('submission-result').textContent=`Обращение сохранено.${result.incidentId?' Оно связано с возможным общим инцидентом.':''}`;$('submission-result').hidden=false;
       try{if(window.WebApp?.initData)window.WebApp.disableClosingConfirmation();}catch(_){}
       show('reports');await loadPage('reports');
-    } catch(e){error(e.message);$('form-error').textContent='Не удалось подтвердить сохранение. Повторите отправку этой же формы: сервер использует тот же ключ запроса, чтобы не сохранить её второй раз.';$('form-error').classList.add('show');}
+    } catch(e){error(e.message);$('form-error').textContent='Не удалось подтвердить отправку. Повторите с теми же данными: обращение не сохранится дважды.';$('form-error').classList.add('show');}
     finally{busy=false;$('submit-report').disabled=false;$('submit-report').textContent='Отправить обращение';await refresh();}
   });
   $('admin-incidents').addEventListener('change',async e=>{
     const id=e.target.dataset.status;if(!id||busy)return;busy=true;e.target.disabled=true;
-    try{await api(`/api/incidents/${id}/status`,'PATCH',{status:e.target.value});error('');toast('Статус сохранён. Жители увидят обновление.');}catch(errorValue){error(errorValue.message);}finally{busy=false;await refresh();if(session.admin)await Promise.all([loadPage('admin'),loadPage('resolved')]);}
+    try{await api(`/api/incidents/${id}/status`,'PATCH',{status:e.target.value});error('');toast('Статус сохранён.');}catch(errorValue){error(errorValue.message);}finally{busy=false;await refresh();if(session.admin)await Promise.all([loadPage('admin'),loadPage('resolved')]);}
   });
   try {
     config=await api('/api/config');
     const previewPlaces=config.buildings?.[0]?.places||[];
     $('preview-place').innerHTML='<option value="">Выберите место</option>'+previewPlaces.map(p=>`<option>${esc(p.name)}</option>`).join('');
     $('preview-place').disabled=previewPlaces.length===0;
-    $('building').innerHTML=config.buildings.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');fillUnits();
+    $('building').innerHTML=config.buildings.map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');syncBuildingLabel();fillUnits();
     const launch=await window.DomPulseLaunch;
     session=await api('/api/session');
     if(launch.error)throw new Error(launch.error);
     if(launch.initData){try{await login({initData:launch.initData});}finally{history.replaceState(null,'',location.pathname+location.search);launch.initData='';}}
     else if(session.authenticated){await loadScopedConfig();clearPrivateView();authView();if(session.hasBuildingAccess){await refresh();await loadInitialPages();}}
     else {session.hasBuildingAccess=false;authView();}
-  } catch(e){session={authenticated:false,admin:false};if(config){clearPrivateView();authView();}error(e.message);$('connection').textContent='Вход не подтверждён или сервер недоступен';$('login-note').textContent=e.message;}
+  } catch(e){session={authenticated:false,admin:false};if(config){clearPrivateView();authView();}else{$('app-loading').hidden=true;$('login-panel').hidden=false;}error(e.message);$('login-note').textContent=e.message;}
   setInterval(()=>{if(!document.hidden&&screen!=='create'&&!document.activeElement.matches('select')&&!busy)refresh();},5000);
 })();

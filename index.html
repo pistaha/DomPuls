@@ -3,33 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ДомПульс — пилот общежития ИТМО</title>
-<meta name="description" content="ДомПульс помогает жителям общежития сообщать о бытовых проблемах и замечать похожие обращения соседей.">
+<title>ДомПульс — пусть о проблеме узнают вовремя</title>
+<meta name="description" content="ДомПульс помогает жителям заметить общую проблему: оставить обращение, увидеть похожие сообщения соседей и следить за статусом.">
+<link rel="icon" href="brand-mark.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="demo.css">
 <link rel="stylesheet" href="pilot.css">
 </head>
 <body>
 <div class="stage">
-  <nav class="landing-nav" aria-label="О проекте"><a href="#top">ДомПульс<span class="brand-dot">●</span></a><span>Пилот · общежитие ИТМО</span></nav>
+  <nav class="landing-nav" aria-label="Навигация по сайту">
+    <a class="landing-brand" href="#top" aria-label="ДомПульс — наверх"><span class="landing-brand-icon" aria-hidden="true"><img src="brand-mark.svg" alt=""></span><span>ДомПульс</span></a>
+    <div class="landing-links"><a href="#features">Возможности</a><a href="#how-it-works">Как работает</a><a href="#pilot">Общежитие ИТМО</a></div>
+    <a class="landing-nav-cta" href="#try-app">Попробовать <span aria-hidden="true">↗</span></a>
+  </nav>
   <header class="hero" id="top">
     <div class="hero-copy">
-      <div class="rule"><span>Вяземский переулок, 5–7</span></div>
-      <h1>Одна проблема.<br>Несколько соседей.<br><em>Общий сигнал.</em></h1>
-      <p>Сервис принимает бытовые обращения и показывает, когда совпадают категория проблемы, выбранное место и время.</p>
-      <div class="hero-actions"><button class="hero-cta" type="button" id="start-app">Открыть пример <span aria-hidden="true">↓</span></button></div>
+      <div class="hero-eyebrow"><span class="eyebrow-spark" aria-hidden="true"></span>Сервис для жителей одного дома</div>
+      <h1><em>Проблемы дома</em><br>становятся<br>видимыми.</h1>
+      <p>Оставьте обращение, увидьте похожие сообщения соседей и следите за статусом. Начинаем с проблемы отсутствия холодной воды.</p>
+      <div class="hero-actions"><a class="hero-cta" href="#try-app" id="start-app">Посмотреть приложение <span aria-hidden="true">↗</span></a><a class="hero-secondary" href="#features">Узнать больше <span aria-hidden="true">↓</span></a></div>
+      <div class="hero-pilot"><span class="hero-pilot-mark" aria-hidden="true"></span><span>Первый дом — общежитие ИТМО<br><b>Вяземский переулок, 5–7</b></span></div>
     </div>
   </header>
 
-  <main class="prototype-stage" aria-label="ДомПульс">
-    <div class="phone" id="phone" tabindex="-1"><div class="screen">
+  <main class="prototype-stage" id="try-app" aria-label="Интерактивный прототип ДомПульса">
+    <div class="phone" id="phone" tabindex="-1"><iframe class="site-prototype-frame" src="site-prototype.html" title="Интерактивный прототип ДомПульса" loading="eager"></iframe><div class="screen">
       <div class="statusbar"><span>ДомПульс</span><span class="demo-badge" id="mode-badge">Проверка подключения</span></div>
       <div class="sheet">
         <div class="sheet-grip" aria-hidden="true"></div>
-        <div class="sheet-head"><h2 class="brand"><span class="logo" aria-hidden="true">Д</span>ДомПульс</h2><button id="refresh" class="iconbtn" type="button" aria-label="Обновить данные">↻</button></div>
-        <div class="connection" id="connection" role="status">Подключаемся…</div>
+        <div class="sheet-head"><h2 class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 128 128" fill="none"><defs><linearGradient id="app-logo-gradient" x1="13" y1="13" x2="115" y2="115" gradientUnits="userSpaceOnUse"><stop stop-color="#2878F0"/><stop offset="1" stop-color="#20BDE4"/></linearGradient></defs><rect x="2" y="2" width="124" height="124" rx="29" fill="url(#app-logo-gradient)"/><path d="M43 91V43L79 30C83.4 28.4 88 31.6 88 36.3V91H43Z" stroke="#fff" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M43 91H87" stroke="#fff" stroke-width="8.5" stroke-linecap="round"/><circle cx="27" cy="69" r="3.6" fill="#fff" fill-opacity=".62"/><circle cx="36" cy="69" r="4.6" fill="#fff" fill-opacity=".82"/><circle cx="46" cy="69" r="5.4" fill="#fff"/></svg></span>ДомПульс</h2><button id="refresh" class="iconbtn" type="button" aria-label="Обновить данные" title="Обновить данные"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5" stroke="#2878F0"/><path d="M5.6 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.4-3" stroke="#758196"/></svg></button></div>
         <div class="storage-warning" id="error" role="alert" hidden></div>
         <div class="states">
+          <div id="app-loading" class="app-loading" role="status"><span class="loading-mark" aria-hidden="true"></span><b>Открываем ДомПульс</b><span>Загружаем данные дома…</span></div>
           <section id="public-preview" class="public-preview" hidden aria-label="Интерактивный пример интерфейса ДомПульса">
             <div class="preview-demo-label"><span class="preview-label-title">Пример · данные не отправляются</span><a id="preview-open-max-app" hidden target="_top" rel="noreferrer">Открыть в MAX</a><button id="preview-to-login" type="button" hidden>Войти для теста</button></div>
             <section class="preview-screen" data-preview-screen="home" role="tabpanel" aria-labelledby="preview-tab-home" id="preview-panel-home">
@@ -47,62 +53,77 @@
               <div class="preview-welcome"><span class="preview-kicker">ВАШИ СООБЩЕНИЯ</span><h3 id="preview-reports-title">Мои обращения</h3><p>Здесь житель видит отправленные обращения и их статус.</p></div><div id="preview-report-list" class="preview-report-list" aria-live="polite"><div class="preview-empty">В этом примере вы ещё не отправляли обращений.</div></div><button class="preview-action preview-secondary" type="button" data-preview-go="create"><span aria-hidden="true">＋</span><span class="preview-action-copy"><b>Создать пример обращения</b></span><span class="preview-arrow" aria-hidden="true">→</span></button></section>
             <div class="preview-tabs" role="tablist" aria-label="Разделы примера"><button id="preview-tab-home" class="selected" type="button" role="tab" aria-selected="true" aria-controls="preview-panel-home" data-preview-tab="home">Дом</button><button id="preview-tab-create" type="button" role="tab" aria-selected="false" aria-controls="preview-panel-create" tabindex="-1" data-preview-tab="create">＋ Заявка</button><button id="preview-tab-reports" type="button" role="tab" aria-selected="false" aria-controls="preview-panel-reports" tabindex="-1" data-preview-tab="reports">Мои обращения</button></div>
           </section>
-          <section id="login-panel" class="card login-panel">
+          <section id="login-panel" class="card login-panel" hidden>
             <h3>Откройте ДомПульс в MAX</h3><p id="login-note">Запустить приложение и отправить обращение можно из чата выданного бота MAX.</p><a id="open-max-app" class="btn btn-primary wide" hidden target="_top" rel="noreferrer">Открыть через бота MAX</a>
             <div id="dev-login" hidden><p class="role-card">Локальная разработка. Эти пользователи и заявки — тестовые; MAX не подключён.</p><label class="f-label" for="dev-user">Тестовый вход</label><select id="dev-user" class="field"><option value="dev-1">Участник 1</option><option value="dev-2">Участник 2</option><option value="dev-3">Участник 3</option><option value="dev-admin">Администратор разработки</option></select><button id="dev-signin" class="btn btn-primary wide" type="button">Войти локально</button><button id="login-to-preview" class="preview-return" type="button" hidden>Вернуться к примеру</button></div>
           </section>
           <section id="access-blocked" class="card access-blocked" hidden role="status"><h3>Доступ к дому пока не открыт</h3><p>Команда пилота должна добавить ваш MAX ID к разрешённым участникам. До этого обращения и история дома недоступны.</p><button id="blocked-signout" class="text-button" type="button">Выйти</button></section>
           <div id="app-content" hidden>
-            <div class="house-picker"><label class="f-label" for="building">Выбранный дом</label><select id="building" class="field"></select><p id="topology-note" class="location-note"></p></div>
+            <div class="house-picker"><span class="house-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M4 21V5a2 2 0 0 1 2-2h8v18M14 9h4a2 2 0 0 1 2 2v10M2 21h20" stroke="#758196"/><path d="M8 7h2M8 11h2M8 15h2M16 13h2M16 17h2" stroke="#2878F0"/></svg></span><div class="house-copy"><label class="f-label" for="building">Выбранный дом</label><span id="building-current" class="building-current" aria-hidden="true"></span><select id="building" class="field"></select><p id="topology-note" class="location-note"></p></div><svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="m5 9 7 7 7-7" stroke="#758196"/></svg></div>
             <section class="state active" id="state-home" aria-labelledby="home-title">
-              <div class="greet"><div class="eyebrow">Общая картина дома</div><h3 id="home-title">Что происходит?</h3></div>
-              <button class="btn btn-primary wide" type="button" data-screen="create">Сообщить о проблеме <span aria-hidden="true">＋</span></button>
+              <div class="greet"><div class="eyebrow">Ситуация в доме</div><h3 id="home-title">Что происходит в доме</h3></div>
+              <button class="btn btn-primary wide" type="button" data-screen="create">Сообщить о проблеме <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M12 7v10M7 12h10" stroke="currentColor"/></svg></button>
               <h4 class="section-heading">Возможные общие инциденты <span id="active-count">0</span></h4><div id="home-incidents"></div>
               <h4 class="section-heading">Похожие обращения за 20 минут</h4><div id="home-pending"></div>
               <h4 class="section-heading">Устранено</h4><div id="home-resolved"></div>
-              <p class="local-note">Соседи видят только выбранную категорию места и количество обращений. Личные описания скрыты.</p>
+              <p class="local-note">Личные описания соседей здесь не показываются.</p>
             </section>
             <section class="state" id="state-create" aria-labelledby="create-title">
               <div class="greet"><div class="eyebrow">Новое обращение</div><h3 id="create-title">Что случилось?</h3></div>
               <form id="report-form">
-                <p class="privacy-note">Это пилот. Не указывайте в описании личные данные.</p>
-                <label class="f-label" for="category">Категория</label><select id="category" class="field"><option>Нет холодной воды</option></select>
+                <p class="privacy-note">Не указывайте личные данные и номер комнаты.</p>
+                <label class="f-label" for="category">Что случилось?</label><div class="select-field"><span class="select-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M12 3C9.2 7.2 6 10.6 6 14.2a6 6 0 0 0 12 0C18 10.6 14.8 7.2 12 3Z" stroke="#2878F0"/><path d="m5 20 14-16" stroke="#E55761"/></svg></span><select id="category" class="field"><option>Нет холодной воды</option></select><svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="m5 9 7 7 7-7" stroke="#758196"/></svg></div>
                 <div id="location-details"><div class="form-grid"><div><label class="f-label" for="unit">Корпус / подъезд</label><select id="unit" class="field" required></select></div><div><label class="f-label" for="floor">Этаж</label><select id="floor" class="field" required></select></div></div>
                 <label class="f-label" for="zone">Настроенная зона</label><select id="zone" class="field" required></select></div>
-                <label class="f-label" for="place">Где вы заметили проблему?</label><select id="place" class="field" required></select>
+                <label class="f-label" for="place">Где вы заметили проблему?</label><div class="select-field"><span class="select-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M4 21V5a2 2 0 0 1 2-2h8v18M14 9h4a2 2 0 0 1 2 2v10M2 21h20" stroke="#758196"/><path d="M8 7h2M8 11h2M8 15h2M16 13h2M16 17h2" stroke="#2878F0"/></svg></span><select id="place" class="field" required></select><svg class="select-chevron" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" aria-hidden="true"><path d="m5 9 7 7 7-7" stroke="#758196"/></svg></div>
                 <label class="f-label" for="description">Короткое описание <span>до 300 знаков</span></label><textarea id="description" class="field" rows="3" maxlength="300" required placeholder="Опишите, что заметили, без личных данных и номера комнаты"></textarea>
                 <p id="form-error" class="form-error" role="alert"></p><button id="submit-report" class="btn btn-primary wide" type="submit">Отправить обращение</button>
-                <p class="local-note">Заявка сохранится в общей базе сервера. Отправка уведомлений в реальную УК пока не подключена.</p>
+                <p class="local-note">Обращение будет видно в разделе «Мои».</p>
               </form>
             </section>
             <section class="state" id="state-reports" aria-labelledby="reports-title"><div class="greet"><div class="eyebrow">Только ваши сообщения</div><h3 id="reports-title">Мои обращения</h3></div><div id="submission-result" role="status" hidden></div><div id="my-reports"></div></section>
-            <section class="state" id="state-admin" aria-labelledby="admin-title"><div class="greet"><div class="eyebrow">Доступ проверен сервером</div><h3 id="admin-title">Администратор</h3></div><p class="location-note">Здесь показаны инциденты общей базы. Описания и идентификаторы жителей не раскрываются.</p><div id="admin-incidents"></div><div class="role-card"><b>Отдельно: защита проекта</b><p>Тестовые обращения хранятся только в браузере и никогда не меняют общую базу.</p><a class="btn btn-white wide" href="/demo">Открыть демо для защиты ↗</a></div></section>
+            <section class="state" id="state-admin" aria-labelledby="admin-title"><div class="greet"><div class="eyebrow">Для администратора</div><h3 id="admin-title">Общие сигналы</h3></div><p class="location-note">Здесь показаны возможные общие инциденты. Описания жителей скрыты.</p><div id="admin-incidents"></div></section>
             <button id="signout" class="text-button" type="button">Выйти</button>
           </div>
         </div>
-        <nav class="tabbar" id="app-nav" aria-label="Разделы приложения" hidden><button class="tab active" type="button" data-screen="home">Дом</button><button class="tab" type="button" data-screen="create">＋ Заявка</button><button class="tab" type="button" data-screen="reports">Мои обращения</button><button class="tab" type="button" data-screen="admin" id="admin-tab" hidden>Управление</button></nav>
+        <nav class="tabbar" id="app-nav" aria-label="Разделы приложения" hidden><button class="tab active" type="button" data-screen="home" aria-current="page"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10Z" stroke="currentColor"/></svg></span><span>Дом</span></button><button class="tab" type="button" data-screen="create"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><circle cx="12" cy="12" r="9" stroke="currentColor"/><path d="M12 7v10M7 12h10" stroke="currentColor"/></svg></span><span>Заявка</span></button><button class="tab" type="button" data-screen="reports"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8"><path d="M6 3h9l4 4v14H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" stroke="currentColor"/><path d="M14 3v5h5M8 12h8M8 16h6" stroke="currentColor"/></svg></span><span>Мои</span></button><button class="tab" type="button" data-screen="admin" id="admin-tab" hidden><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M10.1 2.7h3.8l.55 2.08a7.9 7.9 0 0 1 1.66.96l2.02-.78 1.9 3.3-1.48 1.57c.13.7.13 1.4 0 2.1l1.48 1.57-1.9 3.3-2.02-.78a7.9 7.9 0 0 1-1.66.96l-.55 2.08h-3.8l-.55-2.08a7.9 7.9 0 0 1-1.66-.96l-2.02.78-1.9-3.3 1.48-1.57a6.3 6.3 0 0 1 0-2.1L3.97 8.26l1.9-3.3 2.02.78a7.9 7.9 0 0 1 1.66-.96L10.1 2.7Z" stroke="#758196" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"/><circle cx="12" cy="11.95" r="3.35" stroke="#2878F0" stroke-width="1.9"/></svg></span><span>Управление</span></button></nav>
       </div>
     </div></div>
-    <p class="phone-caption" id="app-caption">Проверьте форму: пример останется в этом браузере.</p>
+    <p class="phone-caption" id="app-caption">Интерактивный пример · обращения никуда не отправляются</p>
   </main>
+  <section class="features" id="features" aria-labelledby="features-title">
+    <div class="section-intro"><span class="section-kicker">Возможности ДомПульса</span><h2 id="features-title">Когда все в курсе,<br><em>действовать проще.</em></h2><p>От вашего сообщения до общего статуса — всё в одном понятном приложении.</p></div>
+    <div class="feature-row feature-row--report">
+      <div class="feature-visual" aria-hidden="true"><div class="visual-orbit visual-orbit--one"></div><div class="mock-report"><div class="mock-top"><span class="mock-avatar"><img src="brand-mark.svg" alt=""></span><span>Новое обращение<small>ДомПульс</small></span><span class="mock-dots">•••</span></div><div class="mock-label">ЧТО СЛУЧИЛОСЬ?</div><strong>Нет холодной воды</strong><div class="mock-field">Душ/туалет в блоке <span>⌄</span></div><div class="mock-field mock-field--text">Вода пропала около 10 минут назад</div><div class="mock-send">Сообщить о проблеме <span>↗</span></div></div></div>
+      <div class="feature-copy"><span class="feature-number">01 / СООБЩИТЬ</span><h3>Расскажите,<br>что заметили</h3><p>Выберите проблему и место, добавьте короткое описание. Заявка появится в вашей истории.</p></div>
+    </div>
+    <div class="feature-row feature-row--signal">
+      <div class="feature-copy"><span class="feature-number">02 / УВИДЕТЬ</span><h3>Один сигнал<br>от нескольких<br>соседей</h3><p>Когда трое жителей сообщают об одной проблеме в одном месте за 20 минут, появляется общий сигнал. Его ещё нужно проверить.</p></div>
+      <div class="feature-visual" aria-hidden="true"><div class="visual-orbit visual-orbit--two"></div><div class="signal-card"><div class="signal-card-top"><span class="signal-live"><i></i> ОБЩИЙ СИГНАЛ</span><span>10:42</span></div><h4>Нет холодной воды</h4><p>Душ/туалет в блоке</p><div class="signal-people"><span>1</span><span>2</span><span>3</span><b>3 разных участника</b></div><div class="signal-line"><i></i><i></i><i></i></div><div class="signal-note">Похожие сообщения — повод проверить ситуацию</div></div></div>
+    </div>
+    <div class="feature-row feature-row--status">
+      <div class="feature-visual" aria-hidden="true"><div class="visual-orbit visual-orbit--three"></div><div class="status-card"><span class="status-label">МОИ ОБРАЩЕНИЯ</span><h4>Нет холодной воды</h4><p>Душ/туалет в блоке</p><div class="status-track"><div><i></i><span>Отправлено<small>Обращение появилось в разделе «Мои»</small></span></div><div><i></i><span>Проверяется<small>Есть похожие сообщения соседей</small></span></div><div><i></i><span>Устранено<small>Отметка администратора проекта</small></span></div></div></div></div>
+      <div class="feature-copy"><span class="feature-number">03 / СЛЕДИТЬ</span><h3>Статус всегда<br>под рукой</h3><p>Ваши обращения собраны в одном месте. Администратор проекта вручную отмечает этапы работы.</p></div>
+    </div>
+  </section>
   <section class="brief" id="how-it-works" aria-labelledby="brief-title">
-    <div class="brief-kicker">Как работает ДомПульс</div>
-    <h2 id="brief-title">Одно место для заявок и их статусов.</h2>
-    <p class="brief-lead">Житель выбирает категорию проблемы и место, где её заметил. Разрешённые участники видят похожие обращения соседей. Администратор проекта вручную обновляет статус; связь с управляющей компанией не подключена.</p>
-    <div class="bridge" aria-label="Как работает сервис">
-      <div class="bridge-step"><span class="bridge-index">01</span><div><strong>Сообщить</strong><span>Выбрать проблему и место, добавить короткое описание.</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
-      <div class="bridge-step"><span class="bridge-index">02</span><div><strong>Сравнить</strong><span>Сервис группирует совпадения по категории, месту и времени.</span></div></div><span class="bridge-arrow" aria-hidden="true">→</span>
-      <div class="bridge-step"><span class="bridge-index">03</span><div><strong>Отметить статус</strong><span>Администратор проекта вручную обновляет общий статус.</span></div></div>
+    <span class="section-kicker">Как это работает</span>
+    <div class="brief-heading"><h2 id="brief-title">Ваше сообщение.<br><em>Общая картина.</em></h2><p>Жители видят категорию проблемы, выбранное место и число похожих обращений. Чужие описания остаются скрытыми.</p></div>
+    <div class="bridge" aria-label="Три шага работы сервиса">
+      <div class="bridge-step"><span class="bridge-index">01</span><div><strong>Вы замечаете</strong><span>Выбираете категорию и место, описываете проблему.</span></div></div>
+      <div class="bridge-step"><span class="bridge-index">02</span><div><strong>Соседи дополняют</strong><span>Похожие обращения могут стать общим сигналом.</span></div></div>
+      <div class="bridge-step"><span class="bridge-index">03</span><div><strong>Статус меняется</strong><span>Администратор вручную отмечает ход работы.</span></div></div>
     </div>
     <div class="brief-section" id="pilot">
-      <div class="brief-section-head"><h3>Категории места в пилоте</h3><span>Общежитие ИТМО</span></div>
+      <div class="brief-section-head"><div><span class="section-kicker">Первый дом</span><h3>Начинаем с общежития ИТМО</h3></div><span>Вяземский переулок, 5–7</span></div>
       <div class="pilot-grid">
-        <div><p class="pilot-copy">Житель выбирает место из опубликованных категорий. Номера комнат и блоков, этажи столовой и учебных комнат, а также инженерная схема в пилоте не указываются.</p><ul class="place-list"><li>Душ/туалет в блоке</li><li>Прачечная, 1-й этаж</li><li>Столовая</li><li>Учебная комната</li><li>Другое</li><li>Не знаю</li></ul></div>
-        <div class="pilot-rule"><b>Когда обращения показываются вместе</b><p>Три разных участника сообщили об одной категории проблемы и выбрали одну категорию места в пределах 20 минут.</p><p>Это возможный общий инцидент. Совпадение не подтверждает аварию, её точное место или причину.</p></div>
+        <div><p class="pilot-copy">Выберите место, где заметили проблему. Номер комнаты указывать не нужно.</p><ul class="place-list"><li>Душ/туалет в блоке</li><li>Прачечная, 1-й этаж</li><li>Столовая</li><li>Учебная комната</li><li>Другое</li><li>Не знаю</li></ul></div>
+        <div class="pilot-rule"><span class="pilot-rule-icon" aria-hidden="true">✳</span><b>Важно знать</b><p>Если трое жителей сообщат об одной проблеме в одном месте за 20 минут, появится общий сигнал. Совпадение не подтверждает аварию или её причину.</p><p>ДомПульс пока не отправляет обращения в управляющую компанию.</p></div>
       </div>
     </div>
   </section>
-  <footer class="foot">ДомПульс · обращения жителей общежития и статусы их обработки.</footer>
+  <section class="closing" aria-labelledby="closing-title"><div class="closing-glow"></div><span class="section-kicker">ДомПульс</span><h2 id="closing-title">Пусть важное<br><em>не остаётся незамеченным.</em></h2><p>Пройдите путь жителя: посмотрите обращения, создайте своё и проверьте, как выглядит его статус.</p><a href="#try-app" class="closing-cta">Попробовать прототип <span aria-hidden="true">↗</span></a></section>
+  <footer class="foot"><span>ДомПульс © 2026</span><span>Для жителей общежития ИТМО</span><a href="#top">Наверх ↑</a></footer>
 </div><div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script src="bridge.js"></script><script src="pilot.js"></script>
 </body></html>

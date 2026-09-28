@@ -134,11 +134,11 @@ function createApp(config, options = {}) {
       }
       if (!['GET','HEAD'].includes(req.method)) throw new HttpError(405,'Метод не поддерживается.');
       // Explicit allowlist: never serve source folders, .env, SQLite or the repository root.
-      const files={'/':'index.html','/index.html':'index.html','/styles.css':'styles.css','/demo.css':'demo.css','/pilot.css':'pilot.css','/pilot.js':'pilot.js','/bridge.js':'bridge.js','/demo':'demo.html','/demo.html':'demo.html','/app.js':'app.js','/model.js':'model.js'};
+      const files={'/':'index.html','/index.html':'index.html','/styles.css':'styles.css','/demo.css':'demo.css','/pilot.css':'pilot.css','/pilot.js':'pilot.js','/bridge.js':'bridge.js','/site-prototype':'site-prototype.html','/site-prototype.html':'site-prototype.html','/site-prototype.css':'site-prototype.css','/site-prototype.js':'site-prototype.js','/brand-mark.svg':'brand-mark.svg','/demo':'demo.html','/demo.html':'demo.html','/app.js':'app.js','/model.js':'model.js'};
       const filename=files[url.pathname];if (!filename) throw new HttpError(404,'Страница не найдена.');
       if (['demo.html','app.js','model.js'].includes(filename)) requireSession(req,true);
       const data=await fs.readFile(path.join(ROOT,filename));
-      const ext=path.extname(filename), types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8'};
+      const ext=path.extname(filename), types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml'};
       res.writeHead(200,{'Content-Type':types[ext]});res.end(req.method==='HEAD'?undefined:data);
     } catch (error) {
       if (!res.headersSent) json(res,error instanceof HttpError?error.status:500,{error:error instanceof HttpError?error.message:'Ошибка сервера. Попробуйте позже.'});

@@ -1,0 +1,29 @@
+/* Standalone, touchable preview of the current Mini App visual design. */
+html,body{width:100%;height:100%;overflow:hidden}
+.site-showcase .stage,.site-showcase .prototype-stage,.site-showcase .phone,.site-showcase .screen{height:100%;min-height:0}
+.site-showcase .prototype-stage{padding:0}
+.site-showcase .phone{width:100%;border:0}
+.site-showcase .screen{overflow:hidden}
+.site-showcase .device-status{height:38px;display:flex;align-items:center;justify-content:space-between;padding:0 23px;background:var(--surface);color:#273248;font-size:10px;font-weight:700;letter-spacing:.02em}
+.site-showcase .sheet{height:calc(100% - 38px);top:38px;bottom:0}
+.site-showcase .sheet-head h1.brand{display:flex;align-items:center;gap:12px;color:var(--text);font-size:25px;font-weight:760;letter-spacing:-.045em;line-height:1.15}
+.site-showcase .sheet-head .logo{display:grid;place-items:center}
+.site-showcase .sheet-head .logo img{display:block;width:46px;height:46px}
+.site-showcase .house-picker{min-height:76px}
+.site-showcase .house-label{display:block;margin-bottom:3px;color:var(--text-3);font-size:12px;font-weight:500}
+.site-showcase .building-current{display:block;color:var(--text);font-size:14px;font-weight:650;line-height:1.3;letter-spacing:-.02em}
+.site-showcase .greet h2{color:var(--text);font-size:clamp(26px,7vw,34px);font-weight:760;line-height:1.14;letter-spacing:-.045em}
+.site-showcase .section-heading{display:flex;align-items:center}
+.site-showcase .card-symbol{font-size:25px;font-weight:700}
+.site-showcase .select-icon{font-size:26px;color:#2878f0;font-weight:500}
+.site-showcase .select-chevron{width:20px;color:#758196;font-size:23px;line-height:1}
+.site-showcase #report-form>.f-label{display:block;margin-top:20px}
+.site-showcase #report-form .select-field{margin-bottom:3px}
+.site-showcase #report-form textarea{margin-top:0}
+.site-showcase #state-reports>.btn{margin-top:18px}
+.site-showcase #state-admin .f-label{display:block;margin-top:18px}
+.site-showcase #state-admin .field{margin-top:2px}
+.site-showcase .tabbar .tab[data-go="admin"]{font-size:10px}
+.site-showcase .report-card h3{margin:0 0 4px;color:var(--text);font-size:19px;font-weight:740;letter-spacing:-.035em}
+.site-showcase .state:focus{outline:none}
+@media(max-width:340px){.site-showcase .sheet-head{padding-inline:16px}.site-showcase .states{padding-inline:13px}.site-showcase .tabbar .tab{font-size:10px}}
