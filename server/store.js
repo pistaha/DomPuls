@@ -26,7 +26,8 @@ class Store {
         category TEXT NOT NULL, description TEXT NOT NULL, created_at INTEGER NOT NULL,
         incident_id TEXT REFERENCES incidents(id), UNIQUE(user_key,request_key));
       CREATE INDEX IF NOT EXISTS report_zone_time ON reports(building_id,zone_id,category,created_at);
-      CREATE INDEX IF NOT EXISTS report_owner ON reports(user_key);
+      CREATE INDEX IF NOT EXISTS report_owner_page ON reports(user_key,building_id,created_at DESC,id DESC);
+      CREATE INDEX IF NOT EXISTS incident_building_page ON incidents(building_id,created_at DESC,id DESC);
       CREATE TABLE IF NOT EXISTS history(id INTEGER PRIMARY KEY, incident_id TEXT NOT NULL REFERENCES incidents(id), status TEXT NOT NULL, at INTEGER NOT NULL);
     `);
     const saved = this.db.prepare("SELECT value FROM meta WHERE key='namespace'").get();
@@ -104,6 +105,49 @@ class Store {
       this.db.exec('COMMIT');
     } catch (error) {this.db.exec('ROLLBACK'); throw error;}
   }
+  incidentBuilding(id) {return this.db.prepare('SELECT building_id FROM incidents WHERE id=?').get(id)?.building_id||null;}
+  currentState(buildingId, now = Date.now()) {
+    if (!this.topology.buildings.some(b=>b.id===buildingId)) throw new HttpError(400,'Дом не настроен.');
+    const rows=this.db.prepare(`SELECT i.*,COUNT(r.id) count,COUNT(DISTINCT r.user_key) unique_count
+      FROM incidents i LEFT JOIN reports r ON r.incident_id=i.id WHERE i.building_id=? AND i.status!='Устранено'
+      GROUP BY i.id ORDER BY i.created_at DESC,i.id DESC`).all(buildingId);
+    const incidents=rows.map(i=>({
+      id:i.id,buildingId:i.building_id,zoneId:i.zone_id,zoneLabel:i.zone_label,category:i.category,title:TITLE,
+      status:i.status,createdAt:i.created_at,updatedAt:i.updated_at,count:i.count,uniqueCount:i.unique_count
+    }));
+    const pending=this.db.prepare(`SELECT zone_id,zone_label,category,COUNT(*) count,COUNT(DISTINCT user_key) unique_count
+      FROM reports WHERE building_id=? AND incident_id IS NULL AND created_at BETWEEN ? AND ? GROUP BY zone_id,category ORDER BY MAX(created_at) DESC,zone_id`).all(buildingId,now-WINDOW,now).map(r=>({zoneId:r.zone_id,zoneLabel:r.zone_label,category:r.category,count:r.count,uniqueCount:r.unique_count}));
+    return {incidents,pending};
+  }
+  incidentPage(buildingId, {cursor=null,limit=20,status='all'}={}, admin=false) {
+    if (!this.topology.buildings.some(b=>b.id===buildingId)) throw new HttpError(400,'Дом не настроен.');
+    if (!['all','active','resolved'].includes(status)) throw new HttpError(400,'Неизвестный фильтр инцидентов.');
+    const after=decodeCursor(cursor),statusWhere=status==='active'?" AND i.status!='Устранено'":status==='resolved'?" AND i.status='Устранено'":'';
+    const cursorWhere=after?' AND (i.created_at < ? OR (i.created_at = ? AND i.id < ?))':'';
+    const args=[buildingId,...(after?[after.createdAt,after.createdAt,after.id]:[]),limit+1];
+    const rows=this.db.prepare(`SELECT i.*,COUNT(r.id) count,COUNT(DISTINCT r.user_key) unique_count
+      FROM incidents i LEFT JOIN reports r ON r.incident_id=i.id WHERE i.building_id=?${statusWhere}${cursorWhere}
+      GROUP BY i.id ORDER BY i.created_at DESC,i.id DESC LIMIT ?`).all(...args);
+    const hasMore=rows.length>limit,items=rows.slice(0,limit).map(i=>({
+      id:i.id,buildingId:i.building_id,zoneId:i.zone_id,zoneLabel:i.zone_label,category:i.category,title:TITLE,
+      status:i.status,createdAt:i.created_at,updatedAt:i.updated_at,count:i.count,uniqueCount:i.unique_count,
+      ...(admin?{history:this.db.prepare('SELECT status,at FROM history WHERE incident_id=? ORDER BY id').all(i.id)}:{})
+    }));
+    return {items,hasMore,nextCursor:hasMore?encodeCursor(rows[limit-1].created_at,rows[limit-1].id):null};
+  }
+  reportPage(user, buildingId, {cursor=null,limit=20}={}, now=Date.now()) {
+    if (!this.topology.buildings.some(b=>b.id===buildingId)) throw new HttpError(400,'Дом не настроен.');
+    const after=decodeCursor(cursor),where=after?' AND (r.created_at < ? OR (r.created_at = ? AND r.id < ?))':'';
+    const args=after?[user,buildingId,after.createdAt,after.createdAt,after.id,limit+1]:[user,buildingId,limit+1];
+    const rows=this.db.prepare(`SELECT r.*,i.status FROM reports r LEFT JOIN incidents i ON i.id=r.incident_id
+      WHERE r.user_key=? AND r.building_id=?${where} ORDER BY r.created_at DESC,r.id DESC LIMIT ?`).all(...args);
+    const hasMore=rows.length>limit,items=rows.slice(0,limit).map(r=>({
+      id:r.id,zoneId:r.zone_id,zoneLabel:r.zone_label,place:r.place,category:r.category,description:r.description,createdAt:r.created_at,
+      incidentId:r.incident_id,status:r.status,expired:!r.incident_id&&now-r.created_at>WINDOW,
+      similarResidents:r.incident_id?0:this.db.prepare(`SELECT COUNT(DISTINCT user_key) n FROM reports WHERE building_id=? AND zone_id=? AND category=? AND incident_id IS NULL AND created_at BETWEEN ? AND ?`).get(buildingId,r.zone_id,r.category,now-WINDOW,now).n
+    }));
+    return {items,hasMore,nextCursor:hasMore?encodeCursor(rows[limit-1].created_at,rows[limit-1].id):null};
+  }
   snapshot(user, buildingId, admin = false, now = Date.now()) {
     if (!this.topology.buildings.some(b => b.id === buildingId)) throw new HttpError(400, 'Дом не настроен.');
     const incidents = this.db.prepare(`SELECT i.*,COUNT(r.id) count,COUNT(DISTINCT r.user_key) unique_count
@@ -128,5 +172,15 @@ class Store {
     this.db.prepare("SELECT value FROM meta WHERE key='namespace'").get();
   }
   close() {this.db.close();}
+}
+function encodeCursor(createdAt,id) {return Buffer.from(JSON.stringify([createdAt,id])).toString('base64url');}
+function decodeCursor(cursor) {
+  if (cursor===null) return null;
+  try {
+    if (typeof cursor!=='string'||cursor.length>256||! /^[A-Za-z0-9_-]+$/.test(cursor)) throw new Error();
+    const value=JSON.parse(Buffer.from(cursor,'base64url').toString('utf8'));
+    if (!Array.isArray(value)||value.length!==2||!Number.isSafeInteger(value[0])||value[0]<0||typeof value[1]!=='string'||! /^[a-f0-9-]{36}$/i.test(value[1])) throw new Error();
+    return {createdAt:value[0],id:value[1]};
+  } catch (_) {throw new HttpError(400,'Некорректный курсор страницы.');}
 }
 module.exports = {Store,WINDOW,CATEGORY,TITLE,STATUSES};

@@ -15,6 +15,7 @@ const {Store}=require('../server/store');
 const topology={...require('../config/buildings.example.json'),synthetic:false};
 const env={NODE_ENV:'production',PUBLIC_URL:'https://fixture.example',MINI_APP_URL:'https://fixture.example/',
   MAX_BOT_TOKEN:'fixture-only-not-a-real-token',MAX_BOT_USERNAME:'fixture_bot',MAX_ADMIN_IDS:'99',
+  MAX_BUILDING_ACCESS:JSON.stringify({42:topology.buildings.map(b=>b.id),99:topology.buildings.map(b=>b.id)}),
   USER_HASH_SECRET:'fixture-only-hash-secret-0123456789',MAX_WEBHOOK_SECRET:'fixture-only-webhook-secret-0123456789',
   MAX_WEBHOOK_URL:'https://fixture.example/webhook/max',BUILDINGS_JSON:JSON.stringify(topology)};
 const signed=()=>{
@@ -37,6 +38,14 @@ test('production rejects missing, synthetic, empty, malformed and conflicting zo
   assert.throws(()=>loadConfig({...env,BUILDINGS_JSON:JSON.stringify(require('../config/buildings.production.template.json'))}));
   assert.throws(()=>loadConfig({...env,BUILDINGS_JSON:'invalid-private-content'}),error=>!error.message.includes('invalid-private-content'));
   assert.throws(()=>loadConfig({...env,BUILDINGS_FILE:'config/buildings.example.json'}),/один источник/);
+});
+test('MAX building access map fails closed and validates residents, admins and building IDs',()=>{
+  assert.equal(loadConfig({...env,MAX_BUILDING_ACCESS:''}).buildingAccess.size,0);
+  const c=loadConfig({...env,MAX_BUILDING_ACCESS:JSON.stringify({42:['vyazemsky'],99:['vyazemsky']})});
+  assert.deepEqual(c.buildingAccess.get('42'),['vyazemsky']);
+  for(const map of ['not-json',JSON.stringify({'not-an-id':['vyazemsky'],99:['vyazemsky']}),JSON.stringify({42:['missing'],99:['vyazemsky']}),JSON.stringify({42:['vyazemsky']})]){
+    assert.throws(()=>loadConfig({...env,MAX_BUILDING_ACCESS:map}),/MAX_BUILDING_ACCESS/);
+  }
 });
 test('health is public, queries SQLite and returns sanitized 503 on failure',async t=>{
   const c=loadConfig(env),store=new Store(':memory:',c.topology);
@@ -87,6 +96,7 @@ test('npm start in isolated production persists SQLite reports across restart', 
   assert.ok(fs.existsSync(path.join(dataDir,'pilot.sqlite')));
   await stop();await start();cookie=await login();
   const state=await (await request('/api/state?buildingId=vyazemsky','GET',undefined,cookie)).json();
-  assert.equal(state.mine.length,1);assert.equal(state.mine[0].description,report.description);
+  const history=await (await request('/api/reports?buildingId=vyazemsky','GET',undefined,cookie)).json();
+  assert.equal(state.incidents.length,0);assert.equal(history.items.length,1);assert.equal(history.items[0].description,report.description);
   assert.equal((await fetch(base+'/.env')).status,404);
 });

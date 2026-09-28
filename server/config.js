@@ -44,6 +44,21 @@ function loadConfig(env = process.env) {
   const hashSecret = env.USER_HASH_SECRET || (development ? 'development-only-not-a-production-secret' : '');
   const adminIds = new Set((env.MAX_ADMIN_IDS || '').split(',').map(x => x.trim()).filter(Boolean));
   if ([...adminIds].some(id => !/^[1-9]\d*$/.test(id))) throw new Error('MAX_ADMIN_IDS: нужны числовые ID через запятую.');
+  const buildingAccess = new Map();
+  if (env.MAX_BUILDING_ACCESS) {
+    try {
+      const access = JSON.parse(env.MAX_BUILDING_ACCESS);
+      if (!access || typeof access !== 'object' || Array.isArray(access)) throw new Error();
+      const buildingIds = new Set(topology.buildings.map(b => b.id));
+      for (const [maxId, allowed] of Object.entries(access)) {
+        if (!/^[1-9]\d*$/.test(maxId) || !Array.isArray(allowed) || !allowed.length || allowed.some(id => typeof id !== 'string' || !buildingIds.has(id)) || new Set(allowed).size !== allowed.length) throw new Error();
+        buildingAccess.set(maxId, [...allowed]);
+      }
+      if ([...adminIds].some(id => !buildingAccess.has(id))) throw new Error();
+    } catch (_) {throw new Error('Некорректный MAX_BUILDING_ACCESS: задайте JSON-карту MAX ID пользователей и администраторов на настроенные ID домов.');}
+  }
+  const allBuildingIds = topology.buildings.map(b => b.id);
+  if (development) for (const id of ['dev-1','dev-2','dev-3','dev-admin']) buildingAccess.set(id, allBuildingIds);
   if (!development && (!botToken || hashSecret.length < 32 || !adminIds.size)) throw new Error('Для production задайте MAX_BOT_TOKEN, USER_HASH_SECRET (32+ символа), MAX_ADMIN_IDS.');
   if (!development && topology.synthetic) throw new Error('Настройте согласованные зоны в BUILDINGS_JSON или BUILDINGS_FILE и отметьте synthetic: false.');
   const miniAppUrl = env.MINI_APP_URL || '';
@@ -56,7 +71,7 @@ function loadConfig(env = process.env) {
   if (webhookUrl && webhookUrl !== `${publicUrl.origin}/webhook/max`) throw new Error('MAX_WEBHOOK_URL должен быть PUBLIC_URL/webhook/max.');
   if (!development && (!webhookSecret || !webhookUrl || !botUsername)) throw new Error('Для production задайте MAX_WEBHOOK_SECRET, MAX_WEBHOOK_URL, MAX_BOT_USERNAME.');
   const dataDir = path.resolve(ROOT, env.DATA_DIR || 'data');
-  return {development, containerDevelopment, port, host, origin: publicUrl.origin, topology, botToken, hashSecret, adminIds,
+  return {development, containerDevelopment, port, host, origin: publicUrl.origin, topology, botToken, hashSecret, adminIds, buildingAccess,
     miniAppUrl, webhookSecret, webhookUrl, botUsername,
     dbPath: path.join(dataDir, development ? 'development.sqlite' : 'pilot.sqlite')};
 }

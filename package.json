@@ -6,6 +6,7 @@
   "engines": {"node": "24.x"},
   "scripts": {
     "dev": "node --env-file-if-exists=.env server/dev.js",
+    "dev:ux": "BUILDINGS_FILE=config/buildings.itmo.json DATA_DIR=/tmp/dompulse-ux-data PORT=3000 HOST=127.0.0.1 node server/dev.js",
     "start": "node --env-file-if-exists=.env server/index.js",
     "bot:register": "node --env-file-if-exists=.env bot/register.js",
     "test": "node --test tests/*.test.cjs",

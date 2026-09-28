@@ -42,7 +42,11 @@ class Sessions {
     this.items.set(token, identity);
     return token;
   }
-  token(req) {return (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('dompulse_session='))?.slice('dompulse_session='.length);}
+  token(req) {
+    const bearer = /^Bearer ([a-f0-9]{64})$/.exec(req.headers.authorization || '');
+    if (bearer) return bearer[1];
+    return (req.headers.cookie || '').split(';').map(s => s.trim()).find(s => s.startsWith('dompulse_session='))?.slice('dompulse_session='.length);
+  }
   get(req) {
     const token = this.token(req), s = this.items.get(token);
     if (!s || s.expiresAt <= Date.now()) {if (token) this.items.delete(token); return null;}

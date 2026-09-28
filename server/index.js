@@ -15,19 +15,35 @@ async function body(req) {
   catch (_) {throw new HttpError(400,'Некорректный JSON.');}
 }
 function createApp(config, options = {}) {
+  config.buildingAccess ||= new Map();
+  if (config.development) for (const id of ['dev-1','dev-2','dev-3','dev-admin']) config.buildingAccess.set(id,config.topology.buildings.map(b=>b.id));
   const store = options.store || new Store(config.dbPath,config.topology,config.development?'development':'pilot');
   const sessions = new Sessions(config), bot = createBot(config, options.fetch);
   const rates = new Map();
-  function rate(req) {
-    const now=Date.now(), key=req.socket.remoteAddress;
-    for (const [k,v] of rates) if (v.until<now) rates.delete(k);
-    const r=rates.get(key)||{until:now+60000,count:0};
-    r.count++;rates.set(key,r);
-    if (r.count>240 || rates.size>10000) throw new HttpError(429,'Слишком много запросов. Подождите минуту.');
+  function rate(req, action, identity, limit, windowMs=60000) {
+    const now=Date.now(), key=action+':'+identity;
+    let r=rates.get(key);
+    if (!r) {
+      if (rates.size>=10000) {
+        for (const [k,v] of rates) if (v.until<=now) rates.delete(k);
+        if (rates.size>=10000) throw new HttpError(429,'Слишком много запросов. Подождите минуту.');
+      }
+      r={until:now+windowMs,count:0};rates.set(key,r);
+    }
+    if (r.until<=now) {r.until=now+windowMs;r.count=0;}
+    if (r.count>=limit) throw new HttpError(429,'Слишком много запросов. Подождите минуту.');
+    r.count++;
+  }
+  function rateSession(req, session, action, limit, anonymousLimit=30) {
+    rate(req,action,session?.userKey||req.socket.remoteAddress||'unknown',session?limit:anonymousLimit);
+  }
+  function requireBuilding(session, buildingId) {
+    if (!config.topology.buildings.some(b=>b.id===buildingId)) throw new HttpError(400,'Дом не настроен.');
+    if (!session.buildingIds?.includes(buildingId)) throw new HttpError(403,'Доступ к этому дому для вашего аккаунта не настроен.');
   }
   function requireSession(req, admin=false) {
     const s=sessions.get(req);
-    if (!s) throw new HttpError(401,'Войдите через MAX. Для разработки используйте локальный вход.');
+    if (!s) throw new HttpError(401,config.development?'Войдите тестовым участником.':'Сессия MAX не найдена или истекла. Откройте мини-приложение снова из бота.');
     if (admin && !s.admin) throw new HttpError(403,'Нужны права администратора.');
     return s;
   }
@@ -51,36 +67,62 @@ function createApp(config, options = {}) {
         catch (_) {return json(res,503,{ok:false});}
       }
       if (url.pathname==='/webhook/max' && req.method==='POST') {
+        rate(req,'webhook',req.socket.remoteAddress||'unknown',120);
         if (!config.webhookSecret || !constantEqual(req.headers['x-max-bot-api-secret'],config.webhookSecret)) throw new HttpError(403,'Webhook не авторизован.');
         try {await bot(await body(req));} catch (err) {if (err instanceof HttpError) throw err;throw new HttpError(502,'Не удалось обработать событие MAX.');}
         return json(res,200,{ok:true});
       }
       if (url.pathname.startsWith('/api/')) {
-        rate(req);
+        const currentSession=sessions.get(req);
+        if (url.pathname==='/api/config' && req.method==='GET') rateSession(req,currentSession,'config',120,120);
+        else if (url.pathname==='/api/session' && req.method==='GET') rateSession(req,currentSession,'session-read',120,120);
+        else if (url.pathname==='/api/session' && req.method==='POST') rateSession(req,null,'session-login',60,60);
+        else if (url.pathname==='/api/session' && req.method==='DELETE') rateSession(req,currentSession,'session-end',60,60);
+        else if (url.pathname==='/api/state' && req.method==='GET') rateSession(req,currentSession,'state-read',120);
+        else if (url.pathname==='/api/reports' && req.method==='GET') rateSession(req,currentSession,'report-history',60);
+        else if (url.pathname==='/api/reports' && req.method==='POST') rateSession(req,currentSession,'report-create',10);
+        else if (url.pathname==='/api/incidents' && req.method==='GET') rateSession(req,currentSession,'incident-history',60);
+        else if (/^\/api\/incidents\/[a-f0-9-]{36}\/status$/.test(url.pathname) && req.method==='PATCH') rateSession(req,currentSession,'incident-status',30);
+        else rateSession(req,currentSession,'api-other',60,60);
         if (!['GET','HEAD'].includes(req.method)) {
           if (req.headers['x-dompulse-request']!=='1' || req.headers.origin!==config.origin) throw new HttpError(403,'Источник запроса не разрешён.');
         }
-        if (url.pathname==='/api/config' && req.method==='GET') return json(res,200,{development:config.development,synthetic:config.topology.synthetic,grouping:config.topology.grouping||'zone',note:config.topology.note,buildings:config.topology.buildings,maxConfigured:!!(config.botToken && config.miniAppUrl.startsWith('https://'))});
+        if (url.pathname==='/api/config' && req.method==='GET') {
+          const buildings=currentSession?config.topology.buildings.filter(b=>currentSession.buildingIds?.includes(b.id)):config.topology.buildings;
+          return json(res,200,{development:config.development,synthetic:config.topology.synthetic,grouping:config.topology.grouping||'zone',note:config.topology.note,buildings,maxConfigured:!!(config.botToken && config.miniAppUrl.startsWith('https://')),maxAppUrl:config.botUsername?`https://max.ru/${config.botUsername}?startapp`:null});
+        }
         if (url.pathname==='/api/session' && req.method==='GET') return json(res,200,sessionView(sessions.get(req)));
         if (url.pathname==='/api/session' && req.method==='POST') {
           const data=await body(req); let identity;
           if (data.initData) {
             const verified=verifyInitData(data.initData,config.botToken);
-            identity={userKey:userKey('max:'+verified.id,config.hashSecret),admin:config.adminIds.has(verified.id),source:'max',expiresAt:verified.expiresAt};
+            identity={userKey:userKey('max:'+verified.id,config.hashSecret),admin:config.adminIds.has(verified.id),buildingIds:config.buildingAccess.get(verified.id)||[],source:'max',expiresAt:verified.expiresAt};
           } else if (config.development && ['dev-1','dev-2','dev-3','dev-admin'].includes(data.devUser)) {
-            identity={userKey:userKey(data.devUser,config.hashSecret),admin:data.devUser==='dev-admin',source:'development',expiresAt:Date.now()+3600000};
+            identity={userKey:userKey(data.devUser,config.hashSecret),admin:data.devUser==='dev-admin',buildingIds:config.buildingAccess.get(data.devUser)||[],source:'development',expiresAt:Date.now()+3600000};
           } else throw new HttpError(401,'Нужны подписанные стартовые данные MAX.');
-          sessions.remove(req);const token=sessions.create(identity);res.setHeader('Set-Cookie',sessions.cookie(token));return json(res,200,sessionView(identity));
+          sessions.remove(req);const token=sessions.create(identity);res.setHeader('Set-Cookie',sessions.cookie(token));return json(res,200,{...sessionView(identity),sessionToken:token});
         }
         if (url.pathname==='/api/session' && req.method==='DELETE') {sessions.remove(req);res.setHeader('Set-Cookie',sessions.cookie('').replace('Max-Age=3600','Max-Age=0'));return json(res,200,{authenticated:false});}
         if (url.pathname==='/api/state' && req.method==='GET') {
-          const s=requireSession(req);return json(res,200,store.snapshot(s.userKey,url.searchParams.get('buildingId'),s.admin));
+          const s=requireSession(req),buildingId=url.searchParams.get('buildingId');requireBuilding(s,buildingId);return json(res,200,store.currentState(buildingId));
+        }
+        if (url.pathname==='/api/incidents' && req.method==='GET') {
+          const s=requireSession(req),buildingId=url.searchParams.get('buildingId');requireBuilding(s,buildingId);
+          return json(res,200,store.incidentPage(buildingId,pageOptions(url),s.admin));
+        }
+        if (url.pathname==='/api/reports' && req.method==='GET') {
+          const s=requireSession(req),buildingId=url.searchParams.get('buildingId');requireBuilding(s,buildingId);
+          return json(res,200,store.reportPage(s.userKey,buildingId,pageOptions(url)));
         }
         if (url.pathname==='/api/reports' && req.method==='POST') {
-          const s=requireSession(req);const result=store.add(s.userKey,await body(req));return json(res,result.repeated?200:201,result);
+          const s=requireSession(req),data=await body(req);requireBuilding(s,data.buildingId);const result=store.add(s.userKey,data);return json(res,result.repeated?200:201,result);
         }
         const match=url.pathname.match(/^\/api\/incidents\/([a-f0-9-]{36})\/status$/);
-        if (match && req.method==='PATCH') {requireSession(req,true);store.setStatus(match[1],(await body(req)).status);return json(res,200,{ok:true});}
+        if (match && req.method==='PATCH') {
+          const s=requireSession(req,true),status=(await body(req)).status;
+          const incidentBuilding=store.incidentBuilding(match[1]);if(!incidentBuilding)throw new HttpError(404,'Инцидент не найден.');requireBuilding(s,incidentBuilding);
+          store.setStatus(match[1],status);return json(res,200,{ok:true});
+        }
         throw new HttpError(404,'Метод не найден.');
       }
       if (!['GET','HEAD'].includes(req.method)) throw new HttpError(405,'Метод не поддерживается.');
@@ -100,6 +142,12 @@ function createApp(config, options = {}) {
   server.requestTimeout=15000;server.headersTimeout=10000;
   server.on('close',()=>store.close());
   return {server,store,sessions};
+}
+function pageOptions(url) {
+  const rawLimit=url.searchParams.get('limit');
+  const limit=rawLimit===null?20:Number(rawLimit);
+  if (!Number.isInteger(limit)||limit<1||limit>50) throw new HttpError(400,'Размер страницы должен быть от 1 до 50.');
+  return {cursor:url.searchParams.get('cursor'),limit,status:url.searchParams.get('status')||'all'};
 }
 function start() {
   const config=loadConfig();const app=createApp(config);

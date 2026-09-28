@@ -53,6 +53,29 @@ test('snapshots expose only owner descriptions and aggregates, including to admi
   const snap=s.snapshot('one','vyazemsky',true,now),wire=JSON.stringify(snap);
   assert.equal(snap.mine.length,1);assert.ok(!wire.includes('PRIVATE OTHER'));assert.ok(!wire.includes('private-user-key'));assert.ok(!wire.includes('user_key'));
 });
+test('store pages incident and owner-report history by stable created_at/id cursors',t=>{
+  const s=store(t),ids=[];
+  const addIncident=s.db.prepare('INSERT INTO incidents VALUES (?,?,?,?,?,?,?,?)');
+  const addReport=s.db.prepare('INSERT INTO reports VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+  for(let n=0;n<55;n++){
+    const id=randomUUID();ids.push(id);
+    const zone='page-zone-'+n;
+    addIncident.run(id,'vyazemsky',zone,'Общая кухня','Нет холодной воды',n===0?'Устранено':'Проверяется',now,now);
+    addReport.run(randomUUID(),'page-owner',randomUUID(),'vyazemsky',zone,'Общая кухня','Общая кухня','Нет холодной воды','page report '+n,now,id);
+  }
+  const readAll=(fetchPage)=>{let cursor=null,all=[];do{const page=fetchPage({cursor,limit:20});all.push(...page.items);cursor=page.nextCursor;if(cursor)assert.equal(page.hasMore,true);else assert.equal(page.hasMore,false);}while(cursor);return all;};
+  const first=s.incidentPage('vyazemsky',{limit:20},true),newer=randomUUID();
+  addIncident.run(newer,'vyazemsky','newer-page-zone','Общая кухня','Нет холодной воды','Проверяется',now+1,now+1);
+  let cursor=first.nextCursor,incidents=[...first.items];
+  while(cursor){const page=s.incidentPage('vyazemsky',{cursor,limit:20},true);incidents.push(...page.items);cursor=page.nextCursor;}
+  assert.equal(s.incidentPage('vyazemsky',{limit:20},true).items[0].id,newer);
+  const reports=readAll(o=>s.reportPage('page-owner','vyazemsky',o,now));
+  assert.equal(incidents.length,55);assert.deepEqual(new Set(incidents.map(i=>i.id)),new Set(ids));assert.ok(!incidents.some(i=>i.id===newer));
+  assert.equal(reports.length,55);assert.equal(new Set(reports.map(r=>r.id)).size,55);
+  assert.equal(s.incidentPage('vyazemsky',{limit:20,status:'resolved'}).items.length,1);
+  assert.equal(s.currentState('vyazemsky',now+1).incidents.length,55);
+  assert.throws(()=>s.reportPage('page-owner','vyazemsky',{cursor:'invalid!'}),/курсор/i);
+});
 test('demo create/status/reset cannot alter pilot database',t=>{
   const s=store(t);wave(s);const before=JSON.stringify(s.snapshot('one','vyazemsky',true,now));let d=demo.empty();
   for(const u of demo.USERS)demo.addReport(d,{buildingId:demo.BUILDINGS[0].id,unitId:'А',floor:1,place:'Общая кухня',category:demo.CATEGORY,userId:u.id,description:'Demo'},now);
@@ -80,7 +103,7 @@ test('production defaults fail closed; development only explicit and loopback',(
   assert.equal(loadConfig({NODE_ENV:'development'}).development,true);assert.throws(()=>validateBuildings({synthetic:true,buildings:[]}));
 });
 async function httpApp(t,development=true){
-  const config={development,origin:'http://localhost',topology,botToken:'fixture-token',hashSecret:'fixture-only-long-hash-secret-not-real',adminIds:new Set(['99']),botUsername:'fixture_bot',miniAppUrl:'https://example.org/',webhookSecret:'fixture-webhook-secret-0123456789'};
+  const config={development,origin:'http://localhost',topology,botToken:'fixture-token',hashSecret:'fixture-only-long-hash-secret-not-real',adminIds:new Set(['99']),buildingAccess:development?new Map():new Map([['42',topology.buildings.map(b=>b.id)],['99',topology.buildings.map(b=>b.id)]]),botUsername:'fixture_bot',miniAppUrl:'https://example.org/',webhookSecret:'fixture-webhook-secret-0123456789'};
   const app=createApp(config,{store:new Store(':memory:',topology,development?'development':'pilot'),fetch:async()=>({ok:true})});
   await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));const base='http://127.0.0.1:'+app.server.address().port;config.origin=base;
   t.after(()=>new Promise(resolve=>app.server.close(resolve)));
@@ -89,7 +112,7 @@ async function httpApp(t,development=true){
     const text=await response.text();let body;try{body=JSON.parse(text);}catch{body=text;}
     return {status:response.status,body,cookie:response.headers.get('set-cookie')?.split(';')[0]};
   };
-  return {request,app};
+  return {request,app,config};
 }
 test('HTTP: production rejects dev bypass and forged data; admin cannot be self-assigned',async t=>{
   const {request}=await httpApp(t,false);
@@ -100,13 +123,48 @@ test('HTTP: production rejects dev bypass and forged data; admin cannot be self-
   assert.equal((await request('/api/incidents/'+randomUUID()+'/status',{method:'PATCH',data:{status:'Устранено'},cookie:resident.cookie})).status,403);
   const admin=await request('/api/session',{method:'POST',data:{initData:signed(99)}});assert.equal(admin.body.admin,true);assert.equal((await request('/demo',{cookie:admin.cookie})).status,200);
 });
+test('HTTP: verified MAX launch works without third-party cookies in a web client',async t=>{
+  const {request}=await httpApp(t,false);
+  const config=await request('/api/config');
+  assert.equal(config.body.maxAppUrl,'https://max.ru/fixture_bot?startapp');
+  assert.equal((await request('/api/state?buildingId=vyazemsky')).status,401);
+  const login=await request('/api/session',{method:'POST',data:{initData:signed(42)}});
+  assert.equal(login.status,200);
+  assert.match(login.body.sessionToken,/^[a-f0-9]{64}$/);
+  const auth={Authorization:'Bearer '+login.body.sessionToken};
+  const live=await request('/api/state?buildingId=vyazemsky',{extra:auth});assert.equal(live.status,200);assert.ok(!('mine' in live.body));
+  assert.equal((await request('/api/reports',{method:'POST',data:input(),extra:auth})).status,201);
+  assert.equal((await request('/api/reports?buildingId=vyazemsky&limit=20',{extra:auth})).body.items.length,1);
+  const denied=await request('/api/session',{method:'POST',data:{initData:signed(43)}});assert.equal(denied.status,200);
+  const deniedAuth={Authorization:'Bearer '+denied.body.sessionToken};
+  assert.deepEqual((await request('/api/config',{extra:deniedAuth})).body.buildings,[]);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:deniedAuth})).status,403);
+  assert.equal((await request('/api/reports',{method:'POST',data:input(),extra:deniedAuth})).status,403);
+  assert.equal((await request('/api/incidents?buildingId=vyazemsky',{extra:deniedAuth})).status,403);
+  assert.equal((await request('/api/session',{method:'DELETE',extra:auth})).status,200);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:auth})).status,401);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:{Authorization:'Bearer '+'0'.repeat(64)}})).status,401);
+});
+test('HTTP administrator privilege alone does not grant access to an unassigned house',async t=>{
+  const {request,app,config}=await httpApp(t,false);
+  for(let n=0;n<3;n++)app.store.add('seed-resident-'+n,input());
+  const id=app.store.snapshot('seed-resident-0','vyazemsky').incidents[0].id;
+  config.buildingAccess.delete('99');
+  const admin=await request('/api/session',{method:'POST',data:{initData:signed(99)}});
+  assert.equal(admin.body.admin,true);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{cookie:admin.cookie})).status,403);
+  assert.equal((await request('/api/incidents/'+id+'/status',{method:'PATCH',data:{status:'Устранено'},cookie:admin.cookie})).status,403);
+});
 test('HTTP: independent participants share an incident; privacy, status and demo access enforced',async t=>{
   const {request}=await httpApp(t);const cookies=[];
   for(let i=1;i<=3;i++){const login=await request('/api/session',{method:'POST',data:{devUser:'dev-'+i}});cookies.push(login.cookie);const r=await request('/api/reports',{method:'POST',data:input({description:'Private-'+i}),cookie:login.cookie});assert.equal(r.status,201);}
-  let state=await request('/api/state?buildingId=vyazemsky',{cookie:cookies[0]});assert.equal(state.body.incidents.length,1);assert.equal(state.body.mine.length,1);assert.ok(!JSON.stringify(state.body).includes('Private-2'));
+  let state=await request('/api/state?buildingId=vyazemsky',{cookie:cookies[0]});assert.equal(state.body.incidents.length,1);assert.ok(!('mine' in state.body));
+  let own=await request('/api/reports?buildingId=vyazemsky',{cookie:cookies[0]});assert.equal(own.body.items.length,1);assert.equal(own.body.items[0].description,'Private-1');assert.ok(!JSON.stringify(own.body).includes('Private-2'));
+  assert.ok(!('history' in (await request('/api/incidents?buildingId=vyazemsky',{cookie:cookies[0]})).body.items[0]));
   const admin=await request('/api/session',{method:'POST',data:{devUser:'dev-admin'}});const id=state.body.incidents[0].id;
   assert.equal((await request('/api/incidents/'+id+'/status',{method:'PATCH',data:{status:'Мастер вызван'},cookie:admin.cookie})).status,200);
-  state=await request('/api/state?buildingId=vyazemsky',{cookie:cookies[1]});assert.equal(state.body.mine[0].status,'Мастер вызван');
+  own=await request('/api/reports?buildingId=vyazemsky',{cookie:cookies[1]});assert.equal(own.body.items[0].status,'Мастер вызван');
+  const adminHistory=await request('/api/incidents?buildingId=vyazemsky',{cookie:admin.cookie});assert.equal(adminHistory.body.items.find(i=>i.id===id).history.length,2);
   assert.equal((await request('/api/demo/reset',{method:'POST',data:{},cookie:admin.cookie})).status,404);
   assert.equal((await request('/app.js',{cookie:cookies[0]})).status,403);assert.equal((await request('/demo',{cookie:admin.cookie})).status,200);
 });
@@ -143,4 +201,29 @@ test('HTTP: expiry and logout revoke access; unexpected client identity is rejec
   const again=await request('/api/session',{method:'POST',data:{devUser:'dev-admin'}});
   assert.equal((await request('/api/session',{method:'DELETE',cookie:again.cookie})).status,200);
   assert.equal((await request('/demo',{cookie:again.cookie})).status,401);
+});
+test('HTTP polling limits are per verified user, not shared peer address',async t=>{
+  const {request,app}=await httpApp(t);
+  const tokens=Array.from({length:21},(_,n)=>app.sessions.create({userKey:'poll-fixture-'+n,admin:false,buildingIds:['vyazemsky'],source:'test',expiresAt:Date.now()+3600000}));
+  for(let i=0;i<tokens.length;i++)for(let n=0;n<12;n++){
+    const result=await request('/api/state?buildingId=vyazemsky',{extra:{Authorization:'Bearer '+tokens[i],'X-Forwarded-For':`198.51.100.${i+1}`}});
+    assert.equal(result.status,200,`user ${i}, poll ${n}`);
+  }
+  const solo=app.sessions.create({userKey:'poll-solo',admin:false,buildingIds:['vyazemsky'],source:'test',expiresAt:Date.now()+3600000});
+  for(let n=0;n<120;n++)assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:{Authorization:'Bearer '+solo}})).status,200);
+  assert.equal((await request('/api/state?buildingId=vyazemsky',{extra:{Authorization:'Bearer '+solo}})).status,429);
+});
+test('HTTP login brute-force limit stays on peer address even if X-Forwarded-For changes',async t=>{
+  const {request}=await httpApp(t);
+  for(let n=0;n<60;n++){
+    const result=await request('/api/session',{method:'POST',data:{devUser:'unknown'},extra:{'X-Forwarded-For':`198.51.100.${n+1}`}});
+    assert.equal(result.status,401);
+  }
+  assert.equal((await request('/api/session',{method:'POST',data:{devUser:'unknown'},extra:{'X-Forwarded-For':'203.0.113.4'}})).status,429);
+});
+test('HTTP create-report quota is independent per verified user action',async t=>{
+  const {request}=await httpApp(t),login=await request('/api/session',{method:'POST',data:{devUser:'dev-1'}}),report=input();
+  assert.equal(login.status,200);
+  for(let n=0;n<10;n++)assert.ok([200,201].includes((await request('/api/reports',{method:'POST',data:report,cookie:login.cookie})).status));
+  assert.equal((await request('/api/reports',{method:'POST',data:report,cookie:login.cookie})).status,429);
 });

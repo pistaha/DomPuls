@@ -691,3 +691,67 @@
   [hidden]{display:none!important}
   .phone:focus-visible,.landing-nav a:focus-visible{outline:3px solid var(--landing-blue);outline-offset:6px}
   @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
+
+  /* Выравнивание презентации: один ритм от первого экрана до пилота. */
+  .stage{width:min(1440px,100%);grid-template-columns:minmax(0,1.18fr) minmax(350px,.82fr);column-gap:clamp(48px,7vw,104px)}
+  .hero{align-self:start;margin-top:clamp(34px,5vh,60px);padding:0}
+  .hero h1{max-width:720px;font-size:clamp(44px,4.5vw,68px);line-height:1.04;letter-spacing:-.052em}
+  .hero-copy > p{max-width:540px;font-size:17px}
+  .hero-actions{gap:14px}
+  .hero-note{max-width:220px}
+  .brief{display:block;margin-top:60px;padding-top:42px;border-top:1px solid var(--landing-line)}
+  .brief-kicker{margin-bottom:12px}
+  .brief h2{max-width:690px;margin-bottom:12px}
+  .brief-lead{max-width:760px;margin-bottom:24px}
+  .bridge{display:grid;grid-template-columns:minmax(0,1fr) 22px minmax(0,1fr) 22px minmax(0,1fr);align-items:stretch;gap:9px;max-width:none;margin:0 0 38px}
+  .bridge-step{min-height:96px;padding:16px;gap:12px;background:var(--landing-surface)}
+  .bridge-step strong{font-size:14px}
+  .bridge-step div span{font-size:12px;line-height:1.45}
+  .bridge-arrow{align-self:center;text-align:center}
+  .brief-section{margin:0;padding:22px 0 0;border-top:1px solid var(--landing-line)}
+  .brief-section-head{margin-bottom:18px}
+  .brief-section h3{font-size:14px;font-weight:650;letter-spacing:0}
+  .pilot-grid{display:grid;grid-template-columns:minmax(0,1.12fr) minmax(280px,.88fr);align-items:start;gap:clamp(24px,5vw,64px)}
+  .pilot-copy{max-width:680px;color:var(--landing-muted);font-size:14px;line-height:1.55}
+  .place-list{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin-top:16px}
+  .place-list li{padding:8px 11px;border:1px solid var(--landing-line);border-radius:999px;background:var(--landing-surface);color:#45464A;font-size:12px;line-height:1.2}
+  .pilot-rule{padding:17px 18px;border-left:3px solid var(--landing-blue);border-radius:0 14px 14px 0;background:var(--landing-blue-soft)}
+  .pilot-rule b{display:block;color:var(--landing-text);font-size:14px;line-height:1.35}
+  .pilot-rule p{margin-top:8px;color:#4F5967;font-size:12px;line-height:1.5}
+  .preview-demo-label{margin-bottom:13px}
+  .preview-demo-label .preview-label-title{color:#5B6575;font-size:11px;font-weight:650}
+  .preview-welcome p{font-size:13px}
+  .preview-incident>small,.preview-footnote{font-size:11px}
+  .preview-demo-label button,.preview-demo-label a,.preview-return{border:0;background:transparent;color:var(--landing-blue);font:600 10px/1.3 var(--font);cursor:pointer}
+  .preview-demo-label button,.preview-demo-label a{padding:5px 2px;text-decoration:underline;text-underline-offset:2px}
+  .preview-demo-label button:hover,.preview-demo-label a:hover,.preview-return:hover{text-decoration:underline;text-underline-offset:2px}
+  .preview-demo-label button:focus-visible,.preview-demo-label a:focus-visible,.preview-return:focus-visible{outline:2px solid rgba(0,122,255,.35);outline-offset:2px;border-radius:4px}
+  .preview-return{display:block;margin:13px auto 0;font-size:12px}
+  .preview-action{appearance:none;border:0;text-align:left;font-family:var(--font);cursor:pointer}
+  .preview-action:focus-visible{outline:3px solid rgba(0,122,255,.35);outline-offset:2px}
+  .preview-tabs button:focus-visible{outline:2px solid rgba(0,122,255,.45);outline-offset:1px}
+  .access-blocked{margin:1rem 0;padding:1.25rem;border:1px solid #f0d69b;background:#fffaf0}
+  .access-blocked h3{margin:0 0 .5rem}
+  .access-blocked p{margin:0;color:#5d6472;line-height:1.5}
+  .more-button{display:block;width:100%;margin:1rem 0;padding:.8rem 1rem;border:1px solid #dce2eb;border-radius:12px;background:#fff;color:#1769d2;font:inherit;font-weight:650;cursor:pointer}
+  .more-button:disabled{opacity:.55;cursor:wait}
+  .foot{width:100%;max-width:none;margin-top:52px;padding-top:16px}
+  @media(max-width:900px){
+    .stage{grid-template-columns:1fr;column-gap:0}
+    .hero{align-self:stretch;margin:0 0 32px;padding:0}
+    .hero h1{max-width:700px;font-size:clamp(42px,7.2vw,64px)}
+    .brief{margin-top:48px;padding-top:32px}
+    .pilot-grid{grid-template-columns:minmax(0,1fr) minmax(250px,.8fr);gap:24px}
+  }
+  @media(max-width:600px){
+    .hero h1{font-size:clamp(38px,10.4vw,54px)}
+    .hero-copy > p{font-size:16px}
+    .bridge{grid-template-columns:1fr;gap:8px;margin-bottom:28px}
+    .bridge-step{min-height:0;padding:13px}
+    .bridge-arrow{display:none}
+    .pilot-grid{grid-template-columns:1fr;gap:18px}
+    .pilot-rule{padding:14px}
+    .place-list{gap:7px}
+    .place-list li{font-size:11px;padding:7px 9px}
+    .brief{margin-top:38px;padding-top:27px}
+  }

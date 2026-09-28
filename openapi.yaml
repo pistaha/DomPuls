@@ -8,21 +8,56 @@ info:
     обозначает возможный общий инцидент, а не подтверждённую аварию или диагноз.
 security:
   - sessionCookie: []
+  - sessionBearer: []
 servers:
   - url: https://dompuls-production.up.railway.app
     description: Existing Railway public HTTPS domain; verify its route after deployment.
 tags:
   - name: Application
     description: Resident-facing application resources and administrator status action.
+  - name: Operations
+    description: Service health endpoint; not a product feature or resident data API.
   - name: MAX webhook
     description: Server-to-server bot event receiver.
 paths:
+  /health:
+    get:
+      tags: [Operations]
+      operationId: getServiceHealth
+      summary: Check service and SQLite availability
+      description: Operational health check, outside the resident-facing product API.
+      security: []
+      responses:
+        '200':
+          description: Service is running and SQLite can be accessed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: true
+        '503':
+          description: SQLite is unavailable.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    const: false
   /api/config:
     get:
       tags: [Application]
       operationId: getAppConfig
       summary: Get public application and place configuration
-      security: []
+      description: Unauthenticated calls return the public pilot list. Verified sessions receive only buildings present in their MAX_BUILDING_ACCESS allowlist; raw MAX IDs are never returned.
+      security:
+        - {}
+        - sessionCookie: []
+        - sessionBearer: []
       responses:
         '200':
           description: Public configuration; contains no credentials or user data.
@@ -55,7 +90,8 @@ paths:
       description: >-
         Production accepts only initData signed by MAX and verified on the server.
         devUser is accepted only when NODE_ENV=development; it is not a production
-        login method. A successful response also sets an HttpOnly session cookie.
+        login method. A successful response sets an HttpOnly cookie and returns a
+        short-lived opaque session token for MAX web clients that block cookies.
       parameters:
         - $ref: '#/components/parameters/RequestOrigin'
         - $ref: '#/components/parameters/DomPulseRequest'
@@ -80,7 +116,7 @@ paths:
                       enum: [dev-1, dev-2, dev-3, dev-admin]
       responses:
         '200':
-          description: Session created; Set-Cookie contains the session credential.
+          description: Session created; the JSON body also contains sessionToken.
           headers:
             Set-Cookie:
               schema:
@@ -96,6 +132,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           $ref: '#/components/responses/RateLimited'
     delete:
@@ -123,7 +163,8 @@ paths:
     get:
       tags: [Application]
       operationId: getResidentState
-      summary: Get incidents, pending similar reports, and the caller's own reports
+      summary: Get the current aggregates for an approved building
+      description: Returns open possible incidents and pending aggregates only. Report and incident history use separate paginated endpoints.
       parameters:
         - name: buildingId
           in: query
@@ -144,9 +185,46 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/RateLimited'
   /api/reports:
+    get:
+      tags: [Application]
+      operationId: listMyReports
+      summary: Get one page of the current participant's own report history
+      description: Uses a stable descending `(createdAt, id)` cursor. Descriptions belong only to the authenticated participant.
+      parameters:
+        - name: buildingId
+          in: query
+          required: true
+          schema: {type: string}
+        - name: limit
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+        - name: cursor
+          in: query
+          required: false
+          schema: {type: string}
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: A page of the caller's reports and the next-page cursor, if any.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       tags: [Application]
       operationId: createReport
@@ -193,12 +271,52 @@ paths:
           $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /api/incidents:
+    get:
+      tags: [Application]
+      operationId: listIncidentHistory
+      summary: Get one page of possible-incidents history for an approved building
+      description: Uses a stable descending `(createdAt, id)` cursor. Resident responses contain aggregate data; status history is administrator-only.
+      parameters:
+        - name: buildingId
+          in: query
+          required: true
+          schema: {type: string}
+        - name: status
+          in: query
+          required: false
+          schema: {type: string, enum: [all, active, resolved], default: all}
+        - name: limit
+          in: query
+          required: false
+          schema: {type: integer, minimum: 1, maximum: 50, default: 20}
+        - name: cursor
+          in: query
+          required: false
+          schema: {type: string}
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: A page of incident aggregates and the next-page cursor, if any.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IncidentPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /api/incidents/{incidentId}/status:
     patch:
       tags: [Application]
       operationId: updateIncidentStatus
       summary: Update a possible incident status (administrator only)
-      description: Requires a verified session whose MAX user ID is in MAX_ADMIN_IDS.
+      description: Requires an administrator session and explicit MAX_BUILDING_ACCESS for the incident's building. The status is a manual project-team entry.
       parameters:
         - name: incidentId
           in: path
@@ -242,6 +360,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '409':
           $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/TooLarge'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '429':
           $ref: '#/components/responses/RateLimited'
   /webhook/max:
@@ -280,6 +402,10 @@ paths:
                     const: true
         '403':
           $ref: '#/components/responses/Forbidden'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '413':
+          $ref: '#/components/responses/TooLarge'
         '415':
           $ref: '#/components/responses/UnsupportedMediaType'
         '502':
@@ -295,6 +421,10 @@ components:
       in: cookie
       name: dompulse_session
       description: HttpOnly cookie issued after verified MAX authentication.
+    sessionBearer:
+      type: http
+      scheme: bearer
+      description: Opaque sessionToken from POST /api/session, kept in page memory.
     maxWebhookSecret:
       type: apiKey
       in: header
@@ -382,9 +512,13 @@ components:
         source:
           type: [string, 'null']
           enum: [max, development, null]
+        sessionToken:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Present only in the POST /api/session response.
     AppConfig:
       type: object
-      required: [development, synthetic, grouping, note, buildings, maxConfigured]
+      required: [development, synthetic, grouping, note, buildings, maxConfigured, maxAppUrl]
       properties:
         development:
           type: boolean
@@ -397,10 +531,14 @@ components:
           type: [string, 'null']
         buildings:
           type: array
+          description: For an authenticated session, filtered to explicitly approved buildings.
           items:
             $ref: '#/components/schemas/Building'
         maxConfigured:
           type: boolean
+        maxAppUrl:
+          type: [string, 'null']
+          description: Official MAX deep link to the configured bot's mini-app.
     Building:
       type: object
       required: [id, name]
@@ -444,7 +582,7 @@ components:
         name: {type: string}
     State:
       type: object
-      required: [incidents, pending, mine]
+      required: [incidents, pending]
       properties:
         incidents:
           type: array
@@ -454,10 +592,24 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PendingReports'
-        mine:
+    IncidentPage:
+      type: object
+      required: [items, hasMore, nextCursor]
+      properties:
+        items:
           type: array
-          items:
-            $ref: '#/components/schemas/ResidentReport'
+          items: {$ref: '#/components/schemas/Incident'}
+        hasMore: {type: boolean}
+        nextCursor: {type: [string, 'null']}
+    ReportPage:
+      type: object
+      required: [items, hasMore, nextCursor]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/ResidentReport'}
+        hasMore: {type: boolean}
+        nextCursor: {type: [string, 'null']}
     Incident:
       type: object
       required: [id, buildingId, zoneId, zoneLabel, category, title, status, createdAt, updatedAt, count, uniqueCount]
@@ -471,6 +623,7 @@ components:
         status:
           type: string
           enum: [Проверяется, Мастер вызван, Устранено]
+          description: Manually entered by a project administrator; it is not verified through a property-management integration.
         createdAt: {type: integer, format: int64}
         updatedAt: {type: integer, format: int64}
         count: {type: integer}
