@@ -19,7 +19,7 @@ RUN npm ci --omit=dev
 COPY --chown=node:node server ./server
 COPY --chown=node:node bot ./bot
 COPY --chown=node:node config/buildings.itmo.json ./config/buildings.itmo.json
-COPY --chown=node:node index.html styles.css demo.css pilot.css pilot.js bridge.js demo.html app.js model.js ./
+COPY --chown=node:node index.html styles.css demo.css pilot.css pilot.js bridge.js site-prototype.html site-prototype.css site-prototype.js brand-mark.svg demo.html app.js model.js ./
 RUN mkdir -p /data && chown node:node /data
 COPY --chown=root:root docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod 755 /usr/local/bin/docker-entrypoint.sh

@@ -32,6 +32,16 @@ test('Railway config uses PORT, production 0.0.0.0 and absolute DATA_DIR',()=>{
   assert.equal(dockerDev.containerDevelopment,true);assert.equal(dockerDev.host,'0.0.0.0');
   for(const port of ['0','65536','bad'])assert.throws(()=>loadConfig({...env,PORT:port}));
 });
+test('production image includes every public site asset',()=>{
+  const root=path.join(__dirname,'..');
+  const build=fs.readFileSync(path.join(root,'scripts/build.js'),'utf8');
+  const assets=build.match(/const publicFiles=\[([^\]]+)\]/)?.[1].match(/'[^']+'/g)?.map(value=>value.slice(1,-1));
+  assert.ok(assets?.length,'Public asset allowlist is missing');
+  const docker=fs.readFileSync(path.join(root,'Dockerfile'),'utf8');
+  const copied=docker.match(/^COPY --chown=node:node (index\.html .+) \.\/$/m)?.[1].split(/\s+/);
+  assert.ok(copied?.length,'Production asset COPY is missing');
+  for(const asset of assets)assert.ok(copied.includes(asset),`${asset} is missing from the production image`);
+});
 test('production rejects missing, synthetic, empty, malformed and conflicting zone sources',()=>{
   assert.throws(()=>loadConfig({...env,BUILDINGS_JSON:''}),/согласованные зоны/);
   assert.throws(()=>loadConfig({...env,BUILDINGS_JSON:JSON.stringify({...topology,synthetic:true})}),/согласованные зоны/);
